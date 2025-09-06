@@ -1,6 +1,6 @@
 library(ggplot2)
 
-potusdata <- read.csv("potusdata.csv")
+potusdata <- read.csv("data/potusdata.csv")
 
 ggplot(data = potusdata, aes(x = growth, y = presvote)) +
   geom_point() +

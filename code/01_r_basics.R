@@ -2,7 +2,7 @@
 
 ## Set your working directory
 ## (Remember you can also do this in R Studio)
-setwd("~/Research_Group Dropbox/Soubhik Barari/Academic/Teaching/POLS-4716-GU-DataSciPoli-2025/Demos/01-intro")
+setwd("~/Research_Group Dropbox/Soubhik Barari/Academic/Teaching/POLS-4716-GU-DataSciPoli-2025/Demos")
 
 ## Install necessary packages
 install.packages("dplyr")
