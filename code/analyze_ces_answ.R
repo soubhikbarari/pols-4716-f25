@@ -92,7 +92,7 @@ ces_2020 %>%
   mutate(turned_out = voted == 5) %>%
   group_by(inputstate) %>%
   # summarise(turnout = mean(turned_out, na.rm = T),
-  #           TODO ) %>%
+  #           TODO) %>%
   arrange(desc(turnout)) %>%
   ggplot(aes(x = trumpvote, y = turnout)) +
   geom_point(aes())
