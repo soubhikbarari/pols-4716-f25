@@ -76,24 +76,33 @@ ggsave(state_turnout_plot, filename = "ces_2020_state_turnout.png")
 
 # 2. What was Democratic turnout for Trump like state-by-state? ----------------
 
-ces_2020 %>%
+dem_turnout_trump <- ces_2020 %>%
   select(inputstate, voted = CC20_401, party = CC20_433a, pres_vote = CC20_410) %>%
   # filter(TODO) %>%
-  # mutate(turned_out_for_trump = voted == 5 & TODO) %>%
+  mutate(turned_out_for_trump = voted == 5 & pres_vote == "Donald J. Trump (Republican)") %>%
   group_by(inputstate) %>%
-  summarise(pct_trump_turnout = 100 * mean(turned_out_for_trump)) %>%
-  # ggplot(aes(TODO)) +
-  geom_bar(stat = "identity")
+  summarise(pct_trump_turnout = 100 * mean(turned_out_for_trump))
+
+dem_turnout_trump %>%
+  ggplot(aes(x = pct_trump_turnout, y = inputstate)) +
+  geom_bar(stat = "identity") +
+  labs(x="% turnout for Trump (among registered Dem voters)")
+
+quantile(dem_turnout_trump$pct_trump_turnout)
 
 # 3. Are state turnout and Trump vote related? ---------------------------------
 
-ces_2020 %>%
+turnout_trump <- ces_2020 %>%
   select(inputstate, voted = CC20_401, pres_vote = CC20_410) %>%
   mutate(turned_out = voted == 5) %>%
   group_by(inputstate) %>%
   # summarise(turnout = mean(turned_out, na.rm = T),
-  #           TODO) %>%
+  #           trumpvote = TODO)
+
+turnout_trump %>%
   arrange(desc(turnout)) %>%
   ggplot(aes(x = trumpvote, y = turnout)) +
-  geom_point(aes())
+  geom_point() +
+  labs(title = "Turnout and Trump Vote Choice (2020)",
+       subtitle = paste0("Correlation:", TODO))
 
