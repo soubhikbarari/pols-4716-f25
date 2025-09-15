@@ -4,16 +4,15 @@
 
 # Set Up -----------------------------------------------------------------------
 
-setwd("/Users/soubhikbarari/Research_Group Dropbox/Soubhik Barari/Academic/Teaching/POLS-4716-GU-DataSciPoli-2025/Repo")
-
+## Set your working directory here
+## setwd("~/Path/To/Your/Folder/")
+  
 library(tidyverse)
 
 # Reading and checking data ----------------------------------------------------
 
-## Full path just to be safe 
-ces_2020 <- readRDS("~/Research_Group Dropbox/Soubhik Barari/Academic/Teaching/POLS-4716-GU-DataSciPoli-2025/Repo/data/ces_2020_sub.rds")
-
-## If you're already in the working directory, don't need full path
+## Make sure that ces_2020_sub.rds is downloaded to the /data subfolder in your class folder
+## (https://github.com/soubhikbarari/pols-4716-f25/blob/main/data/ces_2020_sub.rds)
 ces_2020 <- readRDS("data/ces_2020_sub.rds")
 
 ## Looking at our data
@@ -48,7 +47,7 @@ ces_2020_wrangled %>%
   ggplot(aes(x=turnout, y=inputstate)) +
   geom_bar(stat = "identity")
 
-## Slightly nicer visualization
+## Slightly nicer visualization (advanced)
 
 library(forcats) ## Included in tidyverse
 library(scales) ## Included with ggplot2
