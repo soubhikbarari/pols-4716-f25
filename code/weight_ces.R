@@ -49,7 +49,7 @@ ces_2020_race_vote %>%
 # Validation --------------------------------------------------------------
 
 ## Note: the `sheet` argument below reads in a specific tab in a spreadsheet
-cnn_2020_race_vote <- read_excel("data/cnn_2020_exitpolls.xlsx", sheet = "race")
+cnn_2020_race_vote <- read_excel(url(paste0(pols_4716_github_url, "cnn_2020_exitpolls.xlsx")), sheet = "race")
 
 ## Select only the variables we actually need
 ces_2020_race_vote <- ces_2020_race_vote %>%
