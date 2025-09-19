@@ -75,9 +75,16 @@ ggsave(state_turnout_plot, filename = "ces_2020_state_turnout.png")
 
 # 2. What was Democratic turnout for Trump like state-by-state? ----------------
 
+mean(is.na(ces_2020$CC20_401))
+
 dem_turnout_trump <- ces_2020 %>%
   select(inputstate, voted = CC20_401, party = CC20_433a, pres_vote = CC20_410) %>%
-  # filter(TODO) %>%
+  # keep those registered to vote
+  filter(!is.na(voted)) %>%
+  # keep those who provided an answer to their vote choice
+  filter(!is.na(pres_vote)) %>%
+  # keep Democrats
+  filter(party == 1) %>%
   mutate(turned_out_for_trump = voted == 5 & pres_vote == "Donald J. Trump (Republican)") %>%
   group_by(inputstate) %>%
   summarise(pct_trump_turnout = 100 * mean(turned_out_for_trump))
@@ -95,13 +102,69 @@ turnout_trump <- ces_2020 %>%
   select(inputstate, voted = CC20_401, pres_vote = CC20_410) %>%
   mutate(turned_out = voted == 5) %>%
   group_by(inputstate) %>%
-  # summarise(turnout = mean(turned_out, na.rm = T),
-  #           trumpvote = TODO)
+  summarise(turnout = mean(turned_out, na.rm = T),
+            trumpvote = mean(pres_vote == "Donald J. Trump (Republican)", na.rm = T))
 
 turnout_trump %>%
   arrange(desc(turnout)) %>%
   ggplot(aes(x = trumpvote, y = turnout)) +
   geom_point() +
   labs(title = "Turnout and Trump Vote Choice (2020)",
-       subtitle = paste0("Correlation:", TODO))
+       subtitle = paste0("Correlation:", cor(turnout_trump$trumpvote, turnout_trump$turnout)))
+
+## Slightly nicer visualization
+ces_2020 %>%
+  select(inputstate, voted = CC20_401, pres_vote = CC20_410) %>%
+  mutate(turned_out = voted == 5) %>%
+  group_by(inputstate) %>%
+  summarise(turnout = mean(turned_out, na.rm = T),
+            trumpvote = mean(pres_vote == "Donald J. Trump (Republican)", na.rm = T),
+            samplesize = n()) %>%
+  arrange(desc(turnout)) %>%
+  ggplot(aes(x = trumpvote, y = turnout)) +
+  labs(title = "Turnout and Trump Vote Choice (2020)",
+       subtitle = paste0("Correlation:", 
+                         ### round to the nearest tenth place
+                         round(cor(turnout_trump$trumpvote, turnout_trump$turnout), 2))) +
+  ### make points a little more transparent, size by number of respondents
+  geom_point(aes(size = samplesize), alpha = 0.5) +
+  ### add text labels
+  geom_text(aes(label = inputstate), size = 3) +
+  ### add a smoothing line
+  geom_smooth(method = "lm") +
+  ### 'minimal ink' design
+  theme_minimal() +
+  ### make legend less obtrusive
+  theme(legend.position = "bottom")
+
+## Even nicer
+install.packages("ggrepel")
+library(ggrepel)
+
+ces_2020 %>%
+  select(inputstate, voted = CC20_401, pres_vote = CC20_410) %>%
+  mutate(turned_out = voted == 5) %>%
+  group_by(inputstate) %>%
+  summarise(turnout = mean(turned_out, na.rm = T),
+            trumpvote = mean(pres_vote == "Donald J. Trump (Republican)", na.rm = T),
+            samplesize = n()) %>%
+  arrange(desc(turnout)) %>%
+  ggplot(aes(x = trumpvote, y = turnout)) +
+  labs(title = "Turnout and Trump Vote Choice (2020)",
+       subtitle = paste0("Correlation:", 
+                         ### round to the nearest tenth place
+                         round(cor(turnout_trump$trumpvote, turnout_trump$turnout), 2))) +
+  ### add a reference line (Trump won in state vs. not)
+  geom_vline(xintercept = 0.5, lty = 2) +
+  ### make points a little more transparent, size by number of respondents
+  geom_point(aes(size = samplesize), alpha = 0.5) +
+  ### add easier to read text labels
+  geom_text_repel(aes(label = inputstate), size = 3) +
+  ### add a smoothing line
+  geom_smooth(method = "lm") +
+  ### 'minimal ink' design
+  theme_minimal() +
+  ### make legend less obtrusive
+  theme(legend.position = "bottom")
+
 
