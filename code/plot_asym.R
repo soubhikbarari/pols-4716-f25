@@ -4,8 +4,9 @@ library(tidyverse)
 
 options(scipen = 10)
 
-# Read in data
-votes_2020_ga <- read.csv(url("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/data/votes_2020_ga.csv"))
+# All official votes cast in the 2020 Pres election in Georgia
+votes_2020_ga <- read_csv(url("https://tinyurl.com/votes-2020-ga"))
+options(timeout = 600) ## This extends the default timeout error window in R
 nrow(votes_2020_ga)
 
 # Verified Trump Result in GA: 49.24%
@@ -95,3 +96,4 @@ print("Done!")
   
   
   
+
