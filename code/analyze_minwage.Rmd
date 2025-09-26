@@ -1,0 +1,113 @@
+---
+title: "Does Increasing the Minimum Wage Reduce Employment? Analysis of an Observational Study"
+subtitle: "POLS 4716"
+date: "September 30, 2025"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+editor_options: 
+  chunk_output_type: console
+---
+
+<!--
+When you are ready, click on Knit button in R Studio to produce 
+an HTML document of your results.
+-->
+
+Reference:
+
+> David Card and Alan Krueger. 1994. "[Minimum Wages and Employment: A Case Study of the Fast-Food Industry in New Jersey and Pennsylvania.](https://davidcard.berkeley.edu/papers/njmin-aer.pdf) *American Economic Review* Vol. 84, No. 4, pp. 772–-793.
+
+In 1992, the state of New Jersey (NJ) in the United States raised the minimum wage from \$4.25 to \$5.05 per hour. **Did such an increase in the minimum wage reduce employment as economic theory predicts?** Answering this question requires inference about the NJ employment rate in the *absence* of such a raise in the minimum wage.
+
+The data being analysed in this notebook will allow us to do exactly that. One possible strategy is to look at another state in which the minimum wage did not increase. For example, the researchers of the above study chose the neighboring state, Pennsylvania (PA), on the grounds that NJ’s economy resembles that of Pennsylvania, and hence the fast-food restaurants in the two states are comparable.
+
+## Codebook
+
+| Variable Name    | Description                                                    |
+|------------------|----------------------------------------------------------------|
+| chain            | name of the fast-food restaurant chain                         |
+| location         | location of the restaurants in NJ or PA                        |
+| wageBefore       | wage before the minimum-wage increase                          |
+| wageAfter        | wage after the minimum-wage increase                           |
+| fullBefore       | number of full-time employees before the minimum-wage increase |
+| fullAfter        | number of full-time employees after the minimum-wage increase  |
+| partBefore       | number of part-time employees before the minimum-wage increase |
+| partAfter        | number of part-time employees after the minimum-wage increase  |
+
+
+# Setup
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# Exclude pesky messages from the HTML / PDF output file when we knit
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE
+)
+
+minwage <- read_csv(url("https://tinyurl.com/minwage-data"))
+
+pre_minwage <- 4.25
+post_minwage_nj <- 5.05 
+```
+
+```{r clean-data}
+# minwage <- minwage %>%
+#   mutate(state = if_else(location == "PA", "PA", "NJ"),
+#          fullBeforeProp = TODO,
+#          fullAfterProp = TODO)
+```
+
+# Basic Descriptives
+
+```{r look-at-data}
+# TODO
+
+minwage %>%
+  ggplot(aes(x=wageBefore)) +
+  geom_histogram() +
+  facet_grid(~ state)
+```
+
+# Balance
+
+```{r check-balance}
+# Check chain restaurant mix between two states
+
+# TODO
+
+# Check balance on continuous variables
+
+# TODO
+```
+
+# Before and After (Pre-Post) Design
+
+```{r before-after-causal-effects}
+# TODO
+```
+
+# Subclassification
+
+```{r subclassif-causal-effects}
+# Check post-treatment diff b/t PA and NJ just for BK
+
+# TODO
+  
+# Check post-treatment diff b/t PA and NJ for all chains
+
+# TODO
+```
+
+# Difference in Differences
+
+```{r diff-in-diff-causal-effects}
+# TODO
+```
+
+```{r diff-in-diff-visualized}
+# TODO
+```

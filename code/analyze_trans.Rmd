@@ -13,8 +13,8 @@ When you are ready, click on Knit button in R Studio to produce
 an HTML document of your results.
 -->
 
-
 Reference:
+
 > Broockman, David and Joshua Kalla. 2016. "[Durably Reducing Transphobia: A Field Experiment on Door-to-door Canvassing.](https://science.sciencemag.org/content/352/6282/220.abstract)" *Science* Vol 352, No. 6282. pp. 220--224
 
 The data being analysed in this noteboook comes from a randomized experiment conducted in December 2014 in South Florida on whether door-to-door canvassing with a short conversation can lastingly reduce intergroup prejudices. This particular experiment targeted antitransgender prejudice and 56 canvassers were sent door to door to encourage active perspective-taking with 501 voters. Each household was randomly assigned to either the active treatment of a conversation about transgender people or they were assigned a placebo conversation about recycling. Some canvassers identified as transgender while others identified as nontransgender.

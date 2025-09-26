@@ -36,14 +36,17 @@ ces_2020_race_vote <- ces_2020 %>%
 ces_2020_race_vote %>%
   ggplot(aes(y=race5)) +
   geom_bar(aes(x=trump_vote_uwtd), stat="identity", fill="red") +
-  scale_x_continuous(limits = c(0, 0.75)) +
+  scale_x_continuous(limits = c(0, 0.75), labels = scales::percent_format(1)) +
   labs(x="Trump Vote %", y="Racial Group")
 
 ces_2020_race_vote %>%
   ggplot(aes(y=race5)) +
   geom_bar(aes(x=trump_vote_uwtd), stat="identity", fill="red") +
   geom_bar(aes(x=trump_vote_wtd), stat="identity", fill="red", alpha=0.5) +
-  scale_x_continuous(limits = c(0, 0.75)) +
+  geom_text(aes(x=trump_vote_wtd,
+                label=paste0("+",round(trump_vote_wtd-trump_vote_uwtd, 3)*100)),
+            hjust=-0.5, color="red") +
+  scale_x_continuous(limits = c(0, 0.75), labels = scales::percent_format(1)) +
   labs(x="Trump Vote % (After Weighting)", y="Racial Group")
 
 # Validation --------------------------------------------------------------

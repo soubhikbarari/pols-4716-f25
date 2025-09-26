@@ -37,7 +37,7 @@ Y_repeated_100 <- rbinom(TODO, size=TODO, prob=0.42)
 
 ## Visualize the resulting distribution of % approve.
 tibble(approval=Y_repeated_100) %>%
-  mutate(prop_approve=TODO) %>% ## Hint: Hint: same operation as on line 31!
+  mutate(prop_approve=TODO) %>% ## Hint: same operation as on line 31!
   ggplot(aes(x=prop_approve)) +
   geom_histogram(bins=100) +
   scale_x_continuous(limits = c(0.3, 0.5)) +
