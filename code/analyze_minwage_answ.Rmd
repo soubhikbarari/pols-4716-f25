@@ -1,0 +1,183 @@
+---
+title: "Does Increasing the Minimum Wage Reduce Employment? Analysis of an Observational Study"
+subtitle: "POLS 4716"
+date: "September 30, 2025"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+editor_options: 
+  chunk_output_type: console
+---
+
+<!--
+When you are ready, click on Knit button in R Studio to produce 
+an HTML document of your results.
+-->
+
+Reference:
+
+> David Card and Alan Krueger. 1994. "[Minimum Wages and Employment: A Case Study of the Fast-Food Industry in New Jersey and Pennsylvania.](https://davidcard.berkeley.edu/papers/njmin-aer.pdf) *American Economic Review* Vol. 84, No. 4, pp. 772–-793.
+
+In 1992, the state of New Jersey (NJ) in the United States raised the minimum wage from \$4.25 to \$5.05 per hour. **Did such an increase in the minimum wage reduce employment as economic theory predicts?** Answering this question requires inference about the NJ employment rate in the *absence* of such a raise in the minimum wage.
+
+The data being analysed in this notebook will allow us to do exactly that. One possible strategy is to look at another state in which the minimum wage did not increase. For example, the researchers of the above study chose the neighboring state, Pennsylvania (PA), on the grounds that NJ’s economy resembles that of Pennsylvania, and hence the fast-food restaurants in the two states are comparable.
+
+## Codebook
+
+| Variable Name    | Description                                                    |
+|------------------|----------------------------------------------------------------|
+| chain            | name of the fast-food restaurant chain                         |
+| location         | location of the restaurants in NJ or PA                        |
+| wageBefore       | wage before the minimum-wage increase                          |
+| wageAfter        | wage after the minimum-wage increase                           |
+| fullBefore       | number of full-time employees before the minimum-wage increase |
+| fullAfter        | number of full-time employees after the minimum-wage increase  |
+| partBefore       | number of part-time employees before the minimum-wage increase |
+| partAfter        | number of part-time employees after the minimum-wage increase  |
+
+
+# Setup
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# Exclude pesky messages from the HTML / PDF output file when we knit
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE
+)
+
+minwage <- read_csv(url("https://tinyurl.com/minwage-data"))
+
+pre_minwage <- 4.25
+post_minwage_nj <- 5.05 
+```
+
+```{r clean-data}
+minwage <- minwage %>%
+  mutate(state = if_else(location == "PA", "PA", "NJ"),
+         totalBefore = fullBefore + partBefore,
+         fullBeforeProp = fullBefore/totalBefore,
+         totalAfter = fullAfter + partAfter,
+         fullAfterProp = fullAfter/totalAfter)
+```
+
+# Basic Descriptives
+
+```{r look-at-data}
+print(head(minwage))
+
+table(minwage$chain)
+
+prop.table(table(minwage$chain))
+
+summary(minwage$wageBefore)
+
+minwage %>%
+  ggplot(aes(x=wageBefore)) +
+  geom_histogram() +
+  facet_grid(~ state)
+```
+
+# Balance
+
+```{r check-balance}
+# Check chain restaurant mix between two states
+prop.table(table(minwage$chain[minwage$state=="PA"]))
+prop.table(table(minwage$chain[minwage$state=="NJ"]))
+
+# Alternate tidy versions
+minwage %>%
+  group_by(state, chain) %>%
+  summarise(n = n())
+
+minwage %>%
+  count(state, chain)
+
+# Check balance on continuous variables
+minwage %>%
+  group_by(state) %>%
+  summarise(wageBeforeMean = mean(wageBefore),
+            fullBeforeProp = mean(fullBeforeProp))
+```
+
+# Before and After (Pre-Post) Design
+
+```{r before-after-causal-effects}
+est_prepost <- minwage %>%
+  filter(state == "NJ") %>%
+  summarise(diff = mean(fullAfterProp-fullBeforeProp))
+est_prepost
+```
+
+# Subclassification
+
+```{r subclassif-causal-effects}
+# Check post-treatment diff b/t PA and NJ just for BK
+estim_subcl <- minwage %>%
+  filter(chain == "burgerking") %>%
+  group_by(state) %>%
+  summarise(fullAfterPropMean = mean(fullAfterProp)) %>%
+  # Hard to tell order of subtraction...
+  summarise(diff = diff(fullAfterPropMean)) 
+
+estim_subcl <- minwage %>%
+  filter(chain == "burgerking") %>%
+  group_by(state) %>%
+  summarise(fullAfterPropMean = mean(fullAfterProp)) %>%
+  # Pivot so we know we're estimating NJ-PA, not PA-NJ
+  pivot_wider(names_from = "state",
+              values_from = "fullAfterPropMean") %>%
+  mutate(diff = NJ-PA)
+  
+# Check post-treatment diff b/t PA and NJ for all chains
+estim_subcl <- minwage %>%
+  group_by(state, chain) %>%
+  summarise(fullAfterPropMean = mean(fullAfterProp)) %>%
+  pivot_wider(names_from = "state",
+              values_from = "fullAfterPropMean") %>%
+  summarise(diff = mean(NJ-PA))
+
+estim_subcl
+```
+
+# Difference in Differences
+
+```{r diff-in-diff-causal-effects}
+estim_did <- minwage %>%
+  group_by(state) %>%
+  summarise(overTimeDiff = mean(fullAfterProp - fullBeforeProp)) %>%
+  pivot_wider(names_from="state", values_from="overTimeDiff") %>%
+  mutate(diff = NJ - PA)
+estim_did
+```
+
+```{r diff-in-diff-visualized}
+all_means <- minwage %>%
+  group_by(state) %>%
+  summarise(before = mean(fullBeforeProp),
+            after = mean(fullAfterProp)) 
+
+
+nj_counterfactual <- all_means %>%
+  filter(state == "NJ") %>%
+  mutate(after = before + 
+           all_means$after[all_means$state=="PA"] - all_means$before[all_means$state=="PA"],
+         state = "NJ (Counterfactual)")
+
+all_means %>%
+  bind_rows(nj_counterfactual) %>%
+  ggplot(aes(x="Feb 1992", xend="Nov 1992", y=before, yend=after,
+             color=state, group=state, linetype=state)) +
+  geom_segment() +
+  geom_point(aes(x="Feb 1992", y=before), size=2) +
+  geom_point(aes(x="Nov 1992", y=after), size=2) +
+  scale_color_manual(values = c("blue", "grey", "red")) +
+  scale_linetype_manual(values = c(1,2,1), name="") +
+  ylim(c(0.25, 0.33)) +
+  labs(x="", y="Average Proportion of Full-Time Employees",
+       title="Difference in Differences Design") +
+  theme_classic() +
+  theme(legend.position = "top")
+```
