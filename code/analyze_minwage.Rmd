@@ -55,16 +55,24 @@ post_minwage_nj <- 5.05
 ```
 
 ```{r clean-data}
-# minwage <- minwage %>%
-#   mutate(state = if_else(location == "PA", "PA", "NJ"),
-#          fullBeforeProp = TODO,
-#          fullAfterProp = TODO)
+minwage <- minwage %>%
+  mutate(state = if_else(location == "PA", "PA", "NJ"),
+         totalBefore = fullBefore + partBefore,
+         totalAfter = fullAfter + partAfter,
+         fullBeforeProp = fullBefore / totalBefore,
+         fullAfterProp = fullAfter / totalAfter)
 ```
 
 # Basic Descriptives
 
 ```{r look-at-data}
-# TODO
+mean(minwage$wageBefore)
+mean(minwage$wageAfter)
+
+minwage %>%
+  group_by(state) %>%
+  summarise(before = mean(wageBefore),
+            after = mean(wageAfter))
 
 minwage %>%
   ggplot(aes(x=wageBefore)) +
@@ -87,18 +95,35 @@ minwage %>%
 # Before and After (Pre-Post) Design
 
 ```{r before-after-causal-effects}
-# TODO
+minwage %>%
+  group_by(state) %>%
+  summarise(before = mean(wageBefore),
+            after = mean(wageAfter)) %>% 
+  filter(state == "NJ") %>% 
+  summarise(diff = after-before)
 ```
 
 # Subclassification
 
 ```{r subclassif-causal-effects}
 # Check post-treatment diff b/t PA and NJ just for BK
-
+minwage %>%
+  # filter(chain == "burgerking") %>%
+  group_by(state, chain) %>%
+  summarise(fullAfterProp = mean(fullAfterProp)) %>%
+  pivot_wider(names_from = "state",
+              values_from = "fullAfterProp") %>%
+  summarise(diff = NJ - PA)
 # TODO
   
 # Check post-treatment diff b/t PA and NJ for all chains
-
+minwage %>%
+  # filter(chain == "burgerking") %>%
+  group_by(state, chain) %>%
+  summarise(fullAfterProp = mean(fullAfterProp)) %>%
+  pivot_wider(names_from = "state",
+              values_from = "fullAfterProp") %>%
+  summarise(diff = mean(NJ - PA))
 # TODO
 ```
 
