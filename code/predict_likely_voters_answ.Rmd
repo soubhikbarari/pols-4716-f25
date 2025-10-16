@@ -394,13 +394,54 @@ ests.logit %>%
 pred_turnout_2024_logit <- predict(mdl.logit, newdata = ces_eligv_pred,
                                    type = "response")
 
-# TODO: describe the predictions
+# TODO: describe the predictions 
+# (hint: you'll need to turn the predicted probabilities into turnout predictions!)
 ```
 
 # Model Validation
 
 Finally, once we receive each 2024 respondent's validated turnout (ground truth), we can evaluate our model.
   
-```{r evaluate-model}
-# TODO
+```{r merge-in-truth}
+ces_2024_true <- readRDS(file = "../data/ces_cumul_post24.rds")
+
+# ces_2024_validated <- ces_eligv_pred %>% 
+#   inner_join(
+#     ces_2024_true %>%
+#       select(case_id, vv_turnout_gvm_true = vv_turnout_gvm),
+#     by = TODO
+#   ) %>%
+#   mutate(turnout_true = vv_turnout_gvm_true %in% "Voted",
+#          turnout_pred = TODO)
 ```
+
+```{r classification-metrics}
+## Accuracy (% correct)
+mean(ces_2024_validated$turnout_true == ces_2024_validated$turnout_pred, na.rm = TRUE)
+
+ces_2024_validated %>%
+  summarise(accuracy = mean(turnout_pred == turnout_true, na.rm = TRUE))
+
+## False positive rate (% predicting turnout when they didn't)
+ces_2024_validated %>%
+  # TODO
+  summarise(fpr = mean(turnout_pred != turnout_true, na.rm = TRUE))
+
+## False negative rate (% predicting no turnout when they did)
+ces_2024_validated %>%
+  # TODO
+  summarise(fnr = mean(turnout_pred != turnout_true, na.rm = TRUE))
+
+## Precision (among those predicted turnout, % actually turnout)
+ces_2024_validated %>%
+  # TODO
+  summarise(precision = mean(turnout_pred == turnout_true, na.rm = TRUE))
+
+## Recall (among those actually turnout, % predicted turnout)
+ces_2024_validated %>%
+  # TODO
+  summarise(recall = mean(turnout_pred == turnout_true, na.rm = TRUE))
+```
+
+
+
