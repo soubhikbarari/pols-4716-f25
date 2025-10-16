@@ -1,0 +1,447 @@
+---
+title: "Predicting Likely Voters"
+subtitle: "POLS 4716"
+date: "October 13, 2025"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+editor_options: 
+  chunk_output_type: inline
+params:
+  print_codebook: TRUE
+---
+
+<!--
+When you are ready, click on Knit button in R Studio to produce 
+an HTML document of your results.
+-->
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+**Predicting who is likely to vote is a cornerstone of political analytics in democratic societies. Campaigns, pollsters, and researchers use these models for a variety of tasks.**
+
+However, we often don't know the true outcome until after an election. To get around this, we can train models on historical data (e.g. the CES) where voter turnout has been validated through the voter file.
+
+In this exercise, you'll be playing the role of an election analyst and **build a likely voter model for 2024** using patterns from past elections. We'll draw on the cumulative Cooperative Election Study (CES), a dataset of more than 700,000 respondents spanning nearly 20 years, with validated voter registration and turnout records. 
+
+This exercise is a realistic simulation of how election analysis occurs - so you won't get the validated 2024 turnout data until *after* you've chosen your final model (in a class or two!). We'll reveal the ground truth data to you once you've spent some time developing your model.
+
+<!-- 
+10/14 TASK 0:
+Make sure that this .Rmd file is saved to your `/code` subfolder in your 
+course folder and that the `/data` subfolder also exists. Compile (knit) 
+your Rmarkdown notebook to an HTML report to confirm it works:
+- Click on knit icon on the toolbar above
+- Ctrl + Shift + K (Windows/Linux) or Cmd + Shift + K (Mac OS)
+-->
+
+
+```{r preamble, include=FALSE}
+library(tidyverse)
+library(broom)
+
+# Download from web only if it doesn't exist locally
+if (!file.exists("../data/ces_cumul_pre24.rds")) {
+  ces_cumul <- readRDS(url("https://tinyurl.com/ces-pre24"))
+} else {
+  ces_cumul <- readRDS(file = "../data/ces_cumul_pre24.rds")
+}
+```
+
+# Quick Facts
+
+<!-- These will 'fill in' once you compile your Rmarkdown report! -->
+
+There are `r formatC(nrow(ces_cumul),big.mark=",")` observations and `r ncol(ces_cumul)` variables.
+
+- `r formatC(sum(ces_cumul$year==2024),big.mark=",")` observations in 2024
+- `r formatC(sum(ces_cumul$year==2020),big.mark=",")` observations in 2020
+
+Observations span from `r min(ces_cumul$year)` to `r max(ces_cumul$year)`.
+
+- Equivalently spanning `r length(unique(ces_cumul$cong))` sessions of Congress.
+
+# Codebook
+
+`r if (!params$print_codebook) "(To include this in the report, set the <code>print_codebook</code> in the Rmarkdown header to true)"`
+`r if (params$print_codebook) "(To exclude this from the report, set the <code>print_codebook</code> in the Rmarkdown header to false)"`
+
+```{r basic-vars, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>Basic Variables</b></summary>\n")
+for (col in colnames(ces_cumul)[c(1:4,22:24)]) {
+  cat(paste0("\n* **",col,"**: *",attr(ces_cumul[[col]], "label"),"*"))
+}
+cat("</details>")
+```
+
+```{r geo-vars, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>Geographic Variables</b></summary>\n")
+for (col in colnames(ces_cumul)[c(5,6,7,13,19,20)]) {
+  cat(paste0("\n* **",col,"**: *",attr(ces_cumul[[col]], "label"),"*"))
+}
+cat("</details>")
+```
+
+```{r politics-vars, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>Politics Variables</b></summary>\n")
+for (col in colnames(ces_cumul)[26:29]) {
+  cat(paste0("\n* **",col,"**: *",attr(ces_cumul[[col]], "label"),"*"))
+}
+cat("</details>")
+```
+
+```{r voting-behavior, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>Voting Behavior Variables</b></summary>\n")
+for (col in colnames(ces_cumul)[c(64:100)]) {
+  cat(paste0("\n* **",col,"**: *",attr(ces_cumul[[col]], "label"),"*"))
+}
+cat("</details>")
+```
+
+```{r demo-vars, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>Demographic Variables</b></summary>\n")
+for (col in colnames(ces_cumul)[30:56]) {
+  cat(paste0("\n* **",col,"**: *",attr(ces_cumul[[col]], "label"),"*"))
+  vals <- levels(ces_cumul[[col]])
+  if (!is.null(vals)) 
+    cat(paste0(" (",length(vals),")"))
+  else if (is.numeric(ces_cumul[[col]])) 
+    cat(paste0(" (", min(ces_cumul[[col]], na.rm=T), " to ", max(ces_cumul[[col]], na.rm=T), ")"))
+}
+cat("</details>")
+```
+
+```{r attitud-vars, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>Attitudinal Variables</b></summary>\n")
+for (col in colnames(ces_cumul)[57:63]) {
+  cat(paste0("\n* **",col,"**: *",attr(ces_cumul[[col]], "label"), "*\n"))
+  vals <- levels(ces_cumul[[col]])
+  cat(paste0("\t", 1:length(vals), ". ", vals, collapse="\n"))
+}
+cat("</details>")
+```
+
+# Descriptive Statistics
+
+<!-- 
+10/14 TASK 1:
+In the code chunk below,
+- Write some code to "look at your data" however way you think is informative. 
+  - Note: do not place View() in this chunk - R markdown will not like that
+- Compile your Rmarkdown notebook into an HTML report once you are done.
+-->
+
+```{r look-at-data}
+# TODO
+```
+
+# Basic Model
+
+```{r cleaning-before-model}
+# Wrangle our data
+ces_eligv <- ces_cumul %>%
+  # filter to eligible voters only (adult U.S. citizens)
+  filter(citizen == "Citizen" & age >= 18) %>%
+  # do some wrangling
+  mutate(
+    # recode turnout variables to logical variables
+    turnout_gen = vv_turnout_gvm %in% 
+      c("Voted"),
+    turnout_pri = vv_turnout_pvm %in% 
+      c("Voted"),
+    # three recoded options for capturing 'intention'
+    def_intend_turnout = intent_turnout_self %in%
+      c("Yes, definitely"),
+    def_intend_or_did_turnout = intent_turnout_self %in% 
+      c("Yes, definitely", "I already voted (early or absentee)"),
+    not_def_turnout = intent_turnout_self %in% 
+      c("Probably", "Plan to vote early", "I Plan to Vote Before November 5th", "No", "Undecided"),
+    plan_to_turnout = intent_turnout_self %in% 
+      c("Plan to vote early", "I Plan to Vote Before November 5th"),
+    not_intend_turnout = intent_turnout_self %in% 
+      c("No", "Undecided"),
+    # recode turnout in last election as binary (based on pres vote only)
+    turnout_pres_last = !is.na(voted_pres_party) & !(voted_pres_party == "Undervote")
+  )
+
+# Observations to *fit* a model on
+ces_eligv_fit <- ces_eligv %>%
+  # remove anyone without validated turnout status
+  filter(vv_turnout_gvm %in% c("No Record of Voting", "Voted")) %>%
+  # subset to just 2024
+  filter(year < 2024)
+
+# Observations to *predict* turnout
+ces_eligv_pred <- ces_eligv %>% 
+  filter(year == 2024)
+```
+
+Our first model will involve looking at seemingly obvious predictors of general election turnout (`turnout_gen`):
+
+* Did the individual *say* they were going to turn out? (intention)
+  - `def_intend_or_did_turnout`
+  - `not_def_turnout`
+  - `plan_to_turnout`
+  - `not_intend_turnout`
+* Did the individual turn out *in the past*? (turnout history)
+  - `turnout_pri`
+  - `turnout_pres_last`
+
+<!-- 
+10/14 TASK 2:
+In the code chunk below, we will produce our first version of a likely voter model.
+Fit at least two models with lm() using the basic variables described above.
+
+1. Select the predictors for each model.
+  - Consider different specifications discussed in last class
+2. Fit the models on `ces_eligv_fit`.
+  - Consider whether further subsetting the data might appropriate
+3. Compare the models.
+  - Consider class concepts for assessing model fit
+4. Pick the 'best' model (in your opinion).
+5. Compile your Rmarkdown notebook into an HTML report once you're done.
+-->
+
+```{r fit-basic-model, include=FALSE}
+# check univariate correlations
+cor(ces_eligv_fit$def_intend_or_did_turnout, ces_eligv_fit$turnout_gen)
+cor(ces_eligv_fit$turnout_pri,               ces_eligv_fit$turnout_gen)
+cor(ces_eligv_fit$turnout_pres_last,         ces_eligv_fit$turnout_gen)
+
+mdl.1 <- lm(turnout_gen ~ 
+              def_intend_or_did_turnout, 
+            data = ces_eligv_fit, subset = year >= 2016)
+
+mdl.2 <- lm(turnout_gen ~ 
+              def_intend_or_did_turnout + turnout_pri, 
+            data = ces_eligv_fit, subset = year >= 2016)
+
+mdl.3 <- lm(turnout_gen ~ 
+              def_intend_or_did_turnout + turnout_pri + turnout_pres_last, 
+            data = ces_eligv_fit, subset = year >= 2016)
+
+mdl.4 <- lm(turnout_gen ~ 
+              def_intend_or_did_turnout*turnout_pri*turnout_pres_last, 
+            data = ces_eligv_fit, subset = year >= 2016)
+
+mdl <- mdl.4
+summary(mdl)
+```
+
+This plot below visualizes the coefficients of the turnout predictors from the selected basic model.
+
+```{r viz-basic-model, fig.height=6}
+# note: we're skipping the heteroskedasticity adjustment for now
+ests <- broom::tidy(mdl, conf.int = TRUE, conf.level = 0.99)
+
+ests %>%
+  # make interaction term strings break up over lines
+  mutate(term = gsub("\\:", " x \n", term)) %>%
+  ggplot(aes(y=term)) +
+  geom_vline(xintercept = 0, lty = 2) +
+  geom_pointrange(aes(xmin=conf.low, x=estimate, xmax=conf.high)) +
+  labs(title="Predictors of Turnout",
+       subtitle="Cooperative Election Study | Basic Model") +
+  theme_minimal()
+```
+
+> **Figure 1. Regression coefficients predicting validated turnout using past voting behavior and stated intention.** Points represent coefficient estimates, and horizontal bars represent 95% confidence intervals. Coefficients to the right of zero indicate variables positively associated with turnout, holding other variables constant. Turnout in past elections and stated intention are both strong predictors, though some interaction terms have less precision.
+
+<!--
+10/14 TASK 3: 
+Below, in 2-3 sentences report the following...
+- Why did you pick the model you did? What evidence is there that this is a good model?
+- Are there any potential issues with this model or the data in general?
+- Write a caption for the plot generated above using concepts (e.g. confidence intervals) we introduced last class
+
+Compile your Rmarkdown notebook into an HTML report once you are done.
+-->
+
+For this basic likely voter model, I used a regression predicting validated turnout as a function of past turnout behavior (e.g., turnout in last primary, turnout in last general election) and self-reported likelihood of voting.
+
+This choice is motivated by both substantive theory and empirical evidence:
+
+* Theory: Prior voting behavior is one of the strongest predictors of future voting. People who have voted before tend to be habitual voters.
+
+* Empirics: The coefficients for variables like `turnout_priTRUE` and `turnout_pres_lastTRUE` are positive and statistically precise (small confidence intervals), indicating strong predictive value.
+
+The model is also relatively lean: it uses a few powerful predictors rather than a large number of weak ones, which helps with interpretability.
+
+Potential issues:
+
+* **Selection bias / nonresponse**: The CES sample may not perfectly represent the electorate, and some measures (like intention) may be endogenous (i.e., not exogenous and missing confounders).
+
+* **Overfitting via interactions**: Some of the interaction terms have wide confidence intervals and may not generalize well.
+
+* **Measurement error**: Intention variables may not perfectly predict behavior, especially among less consistent voters. If we used this likely voter model on a different survey, that survey might have *different* measurement error in its intention questions (e.g., if it's longer, people might burn out and 'satisfice' or lie more)
+
+# Plus Model
+
+This next model, the "basics plus" model will incorporate additional demographics, politics, and attitudes surveyed of the respondents.
+
+<!-- 
+10/14 TASK 4:
+Repeat Task 1 for this model, selecting variables from the Politics, Demographics, and 
+Attitudinal sections of the codebook above.
+-->
+
+```{r fit-plus-model, include=FALSE}
+mdl.plus <- lm(turnout_gen ~ 
+                 def_intend_or_did_turnout + turnout_pri + turnout_pres_last + 
+                 pid3 + ideo5 + gender + race + log(age) + educ +
+                 employ + no_healthins + investor + has_child + ownhome + union + no_milstat +
+                 newsint + economy_retro, 
+               data = ces_eligv_fit, subset = year >= 2016)
+summary(mdl.plus)
+```
+
+This plot below visualizes the coefficients of the turnout predictors from the selected plus model.
+
+```{r viz-plus-model, fig.height=10}
+ests.plus <- broom::tidy(mdl.plus, conf.int = TRUE, conf.level = 0.99)
+
+ests.plus %>%
+  filter(term != "(Intercept)") %>%
+  # make interaction term strings break up over lines
+  mutate(term = gsub("\\:", " x \n", term)) %>%
+  # wrap long variables also over lines
+  mutate(term = stringr::str_wrap(term, width = 40)) %>%
+  mutate(term = fct_reorder(term, estimate),
+         stat_sig = p.value < 0.01) %>%
+  ggplot(aes(y=term, xmin=conf.low, x=estimate, xmax=conf.high)) +
+  geom_pointrange(aes(alpha=stat_sig)) +
+  geom_vline(xintercept = 0, lty = 2) +
+  scale_alpha_manual(values=c(0.25, 1), name = "Stat. Sig?") +
+  labs(title="Predictors of Turnout",
+       subtitle="Cooperative Election Study | Plus Model") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+> **Figure 2. Linear probability model estimates of validated turnout from the Cooperative Election Study (2016–2022).** Points represent coefficient estimates, and horizontal lines represent 99% confidence intervals. Predictors are ordered by effect size. Past voting behavior and intention remain the strongest predictors of turnout, followed by age, education, and homeownership. Race and some attitudinal measures show negative or weaker associations. Black points denote coefficients statistically significant at the 1% level; gray points are not statistically significant.
+
+<!-- 
+10/14 TASK 5:
+Repeat Task 2 for this model.
+-->
+
+This expanded model builds on the baseline turnout model.
+
+It reflects the fact that turnout is shaped both by habitual voting and structural factors like age, race, education, and partisanship.
+
+Some evidence that it's a good model:
+
+* Coefficients for age and education align with well-known turnout patterns.
+
+* Confidence intervals are tight for many variables, indicating that our predictions are not likely to be noisy.
+
+This model produces the following fitted values for 2024 respondents:
+
+```{r predict-model}
+pred_turnout_2024 <- predict(mdl.plus, newdata = ces_eligv_pred)
+
+hist(pred_turnout_2024)
+```
+
+<!-- 
+10/14 TASK 6:
+Run the code above to output the histogram plot of predicted values of turnout. 
+What's wrong with this plot?
+(Note it here and compile your Rmarkdown one last time - you're ready to turn in your report!)
+-->
+
+The plot *should* show either the distribution of predicted probabilities of turnout in 2024 (0 to 1) or
+predictions of turnout (0 or 1). But here, the outcomes fall outside those values (in some cases, 
+they are negative!). This happens because:
+
+* The model used is a linear regression (lm), which doesn’t constrain the output.
+
+* Linear regression assumes a linear relationship between predictors and the probability of turnout, which can produce predictions outside the valid probability range.
+
+# Logistic Regression Model
+
+In this section, we will fit a logistic regression model.
+
+```{r fit-logit-model, include=FALSE}
+# mdl.logit <- glm(TODO)
+# summary(mdl.logit)
+```
+
+```{r viz-logit-model, fig.height=10, eval=exists('mdl.logit')}
+ests.logit <- broom::tidy(mdl.logit, exponentiate = TRUE)
+
+ests.logit %>%
+  # note: we're calculating 99% CIs by hand rather than using broom::tidy() which is slow
+  mutate(conf.low = estimate-2.57*std.error, 
+         conf.high = estimate+2.57*std.error) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = fct_reorder(term, estimate),
+         stat_sig = p.value < 0.01) %>%
+  ggplot(aes(y=term, xmin=conf.low, x=estimate, xmax=conf.high)) +
+  geom_pointrange(aes(alpha=stat_sig)) +
+  geom_vline(xintercept = 1, lty = 2) +
+  scale_alpha_manual(values=c(0.25, 1), name = "Stat. Sig?") +
+  labs(title="Predictors of Turnout",
+       subtitle="Cooperative Election Study | Logit Model") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+  
+```{r predict-logit-model, eval=exists('mdl.logit')}
+pred_turnout_2024_logit <- predict(mdl.logit, newdata = ces_eligv_pred,
+                                   type = "response")
+
+# TODO: describe the predictions 
+# (hint: you'll need to turn the predicted probabilities into turnout predictions!)
+```
+
+# Model Validation
+
+Finally, once we receive each 2024 respondent's validated turnout (ground truth), we can evaluate our model.
+  
+```{r merge-in-truth}
+ces_2024_true <- readRDS(file = "../data/ces_cumul_post24.rds")
+
+# ces_2024_validated <- ces_eligv_pred %>% 
+#   inner_join(
+#     ces_2024_true %>%
+#       select(case_id, vv_turnout_gvm_true = vv_turnout_gvm),
+#     by = TODO
+#   ) %>%
+#   mutate(turnout_true = vv_turnout_gvm_true %in% "Voted",
+#          turnout_pred = TODO)
+```
+
+```{r classification-metrics}
+## Accuracy (% correct)
+mean(ces_2024_validated$turnout_true == ces_2024_validated$turnout_pred, na.rm = TRUE)
+
+ces_2024_validated %>%
+  summarise(accuracy = mean(turnout_pred == turnout_true, na.rm = TRUE))
+
+## False positive rate (% predicting turnout when they didn't)
+ces_2024_validated %>%
+  # TODO
+  summarise(fpr = mean(turnout_pred != turnout_true, na.rm = TRUE))
+
+## False negative rate (% predicting no turnout when they did)
+ces_2024_validated %>%
+  # TODO
+  summarise(fnr = mean(turnout_pred != turnout_true, na.rm = TRUE))
+
+## Precision (among those predicted turnout, % actually turnout)
+ces_2024_validated %>%
+  # TODO
+  summarise(precision = mean(turnout_pred == turnout_true, na.rm = TRUE))
+
+## Recall (among those actually turnout, % predicted turnout)
+ces_2024_validated %>%
+  # TODO
+  summarise(recall = mean(turnout_pred == turnout_true, na.rm = TRUE))
+```
+
+
+
