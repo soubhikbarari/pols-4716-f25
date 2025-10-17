@@ -405,14 +405,14 @@ Finally, once we receive each 2024 respondent's validated turnout (ground truth)
 ```{r merge-in-truth}
 ces_2024_true <- readRDS(url("https://tinyurl.com/ces-post24"))
 
-# ces_2024_validated <- ces_eligv_pred %>% 
-#   inner_join(
-#     ces_2024_true %>%
-#       select(case_id, vv_turnout_gvm_true = vv_turnout_gvm),
-#     by = TODO
-#   ) %>%
-#   mutate(turnout_true = vv_turnout_gvm_true %in% "Voted",
-#          turnout_pred = TODO)
+ces_2024_validated <- ces_eligv_pred %>% 
+  inner_join(
+    ces_2024_true %>%
+      select(case_id, vv_turnout_gvm_true = vv_turnout_gvm),
+    by = "case_id"
+  ) %>%
+  mutate(turnout_true = vv_turnout_gvm_true %in% "Voted",
+         turnout_pred = turnout_prob > 0.5)
 ```
 
 ```{r classification-metrics}
@@ -424,24 +424,130 @@ ces_2024_validated %>%
 
 ## False positive rate (% predicting turnout when they didn't)
 ces_2024_validated %>%
-  # TODO
+  filter(turnout_true == 0) %>%
   summarise(fpr = mean(turnout_pred != turnout_true, na.rm = TRUE))
 
 ## False negative rate (% predicting no turnout when they did)
 ces_2024_validated %>%
-  # TODO
+  filter(turnout_true == 1) %>%
   summarise(fnr = mean(turnout_pred != turnout_true, na.rm = TRUE))
 
 ## Precision (among those predicted turnout, % actually turnout)
 ces_2024_validated %>%
-  # TODO
+  filter(turnout_pred == 1) %>%
   summarise(precision = mean(turnout_pred == turnout_true, na.rm = TRUE))
 
 ## Recall (among those actually turnout, % predicted turnout)
 ces_2024_validated %>%
-  # TODO
+  filter(turnout_true == 1) %>%
   summarise(recall = mean(turnout_pred == turnout_true, na.rm = TRUE))
 ```
 
+```{r classification-metrics}
+## Accuracy (% correct)
+mean(ces_2024_validated$turnout_true == ces_2024_validated$turnout_pred, na.rm = TRUE)
+
+ces_2024_validated %>%
+  summarise(accuracy = mean(turnout_pred == turnout_true, na.rm = TRUE))
+
+## False positive rate (% predicting turnout when they didn't)
+ces_2024_validated %>%
+  filter(turnout_true == 0) %>%
+  summarise(fpr = mean(turnout_pred != turnout_true, na.rm = TRUE))
+
+## False negative rate (% predicting no turnout when they did)
+ces_2024_validated %>%
+  filter(turnout_true == 1) %>%
+  summarise(fnr = mean(turnout_pred != turnout_true, na.rm = TRUE))
+
+## Precision (among those predicted turnout, % actually turnout)
+ces_2024_validated %>%
+  filter(turnout_pred == 1) %>%
+  summarise(precision = mean(turnout_pred == turnout_true, na.rm = TRUE))
+
+## Recall (among those actually turnout, % predicted turnout)
+ces_2024_validated %>%
+  filter(turnout_true == 1) %>%
+  summarise(recall = mean(turnout_pred == turnout_true, na.rm = TRUE))
+```
+
+```{r classification-metrics2}
+evaluate_classification <- function(ytrue, ypred) {
+  tp <- sum(ytrue == 1 & ypred == 1, na.rm = T)
+  fp <- sum(ytrue == 0 & ypred == 1, na.rm = T)
+  fn <- sum(ytrue == 1 & ypred == 0, na.rm = T)
+  tn <- sum(ytrue == 0 & ypred == 0, na.rm = T)
+
+  accuracy  <- mean(ytrue == ypred, na.rm = T)
+  fnr       <- fn / (fn + tp)
+  fpr       <- fp / (fp + tn)
+  precision <- tp / (tp + fp)
+  recall    <- tp / (tp + fn)
+
+  tibble(accuracy, fpr, fnr, precision, recall)
+}
+
+evaluate_classification(
+  ytrue = ces_2024_validated$turnout_true,
+  ypred = ces_2024_validated$turnout_pred
+)
+```
+
+```{r roc-curve}
+compute_roc_auc <- function(y_true, y_prob, plot = TRUE) {
+  valid_obs <- !is.na(y_true) & !is.na(y_prob)
+  y_true <- as.numeric(y_true[valid_obs])
+  y_prob <- as.numeric(y_prob[valid_obs])
+  
+  if (length(y_true) != length(y_prob)) stop("y_true and y_prob must be the same length")
+  if (!all(y_true %in% c(0, 1))) stop("y_true must be binary (0/1)")
+
+  thresholds <- seq(0, 1, by = 0.01)
+  tpr <- numeric(length(thresholds))
+  fpr <- numeric(length(thresholds))
+  
+  for (i in seq_along(thresholds)) {
+    thr <- thresholds[i]
+    pred <- ifelse(y_prob >= thr, 1, 0)
+    TP <- sum(pred == 1 & y_true == 1)
+    FP <- sum(pred == 1 & y_true == 0)
+    FN <- sum(pred == 0 & y_true == 1)
+    TN <- sum(pred == 0 & y_true == 0)
+    
+    tpr[i] <- TP / (TP + FN)  # sensitivity
+    fpr[i] <- FP / (FP + TN)  # 1 - specificity
+  }
+
+  # calculate area under curve (AUC)
+  ord <- order(fpr)
+  x <- fpr[ord]
+  y <- tpr[ord]
+  auc <- sum(diff(x) * (head(y, -1) + tail(y, -1)) / 2)
+  
+  roc_df <- data.frame(threshold = thresholds, fpr = fpr, tpr = tpr)
+  
+  if (plot) {
+    gg <- ggplot(roc_df, aes(x = fpr, y = tpr)) +
+      geom_line(color = "#2E86C1", size = 1.2) +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
+      labs(
+        x = "False Positive Rate",
+        y = "True Positive Rate",
+        title = paste0("ROC Curve (AUC = ", round(auc, 3), ")"),
+        subtitle ="Cooperative Election Study | Logistic Model"
+      ) +
+      theme_minimal(base_size = 13)
+    print(gg)
+  }
+  
+  return(list(
+    auc = auc,
+    roc = data.frame(threshold = thresholds, fpr = fpr, tpr = tpr)
+  ))
+}
+
+compute_roc_auc(y_true = ces_2024_validated$turnout_true,
+                y_prob = ces_2024_validated$turnout_prob)
+```
 
 
