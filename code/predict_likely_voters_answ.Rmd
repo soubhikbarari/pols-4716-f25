@@ -471,6 +471,28 @@ ces_2024_validated %>%
   summarise(recall = mean(turnout_pred == turnout_true, na.rm = TRUE))
 ```
 
+```{r classification-metrics2}
+evaluate_classification <- function(ytrue, ypred) {
+  tp <- sum(ytrue == 1 & ypred == 1, na.rm = T)
+  fp <- sum(ytrue == 0 & ypred == 1, na.rm = T)
+  fn <- sum(ytrue == 1 & ypred == 0, na.rm = T)
+  tn <- sum(ytrue == 0 & ypred == 0, na.rm = T)
+
+  accuracy  <- mean(ytrue == ypred, na.rm = T)
+  fnr       <- fn / (fn + tp)
+  fpr       <- fp / (fp + tn)
+  precision <- tp / (tp + fp)
+  recall    <- tp / (tp + fn)
+
+  data.frame(accuracy, fpr, fnr, precision, recall)
+}
+
+evaluate_classification(
+  ytrue = ces_2024_validated$turnout_true,
+  ypred = ces_2024_validated$turnout_pred
+)
+```
+
 ```{r roc-curve}
 compute_roc_auc <- function(y_true, y_prob, plot = TRUE) {
   valid_obs <- !is.na(y_true) & !is.na(y_prob)
