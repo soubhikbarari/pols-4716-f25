@@ -402,7 +402,7 @@ pred_turnout_2024_logit <- predict(mdl.logit, newdata = ces_eligv_pred,
 
 Finally, once we receive each 2024 respondent's validated turnout (ground truth), we can evaluate our model.
   
-```{r merge-in-truth}
+```{r merge-in-truth, eval=exists('mdl.logit')}
 ces_2024_true <- readRDS(url("https://tinyurl.com/ces-post24"))
 
 ces_2024_validated <- ces_eligv_pred %>% 
@@ -549,5 +549,3 @@ compute_roc_auc <- function(y_true, y_prob, plot = TRUE) {
 compute_roc_auc(y_true = ces_2024_validated$turnout_true,
                 y_prob = ces_2024_validated$turnout_prob)
 ```
-
-

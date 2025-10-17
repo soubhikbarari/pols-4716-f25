@@ -1,4 +1,5 @@
 evaluate_classification <- function(ytrue, ypred) {
+  
   # Evaluate a classifier's predictions
   tp <- sum(ytrue == 1 & ypred == 1, na.rm = T)
   fp <- sum(ytrue == 0 & ypred == 1, na.rm = T)
