@@ -484,7 +484,7 @@ evaluate_classification <- function(ytrue, ypred) {
   precision <- tp / (tp + fp)
   recall    <- tp / (tp + fn)
 
-  data.frame(accuracy, fpr, fnr, precision, recall)
+  tibble(accuracy, fpr, fnr, precision, recall)
 }
 
 evaluate_classification(
