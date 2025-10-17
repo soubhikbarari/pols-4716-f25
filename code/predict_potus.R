@@ -162,4 +162,7 @@ ggplot(model.robust.tidy, aes(estimate, term, xmin = conf.low, xmax = conf.high)
   geom_vline(xintercept = 0) +
   geom_pointrange()
 
+# Model fit ---------------------------------------------------------------
 
+model.full <- lm(presvote ~ dpi + incpty + incrun + dpi:incpty + incrun:incpty, data = potusvotes)
+summary(model.full)

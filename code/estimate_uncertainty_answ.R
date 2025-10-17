@@ -56,5 +56,3 @@ for (draw in 1:num_draws) {
   }
 }
 
-
-
