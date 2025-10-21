@@ -1,3 +1,5 @@
+# Setup -------------------------------------------------------------------
+
 library(tidyverse)
 
 # Set working directory as base course folder
@@ -17,6 +19,8 @@ source("code/ml_funcs.R")
 # Read data
 wardat <- readRDS("data/wardat.rds")
 
+# Descriptives ------------------------------------------------------------
+
 # Look at data
 View(wardat)
 
@@ -30,15 +34,18 @@ View(wardat[c("country","year","civilwar","warhist","gdpgrowth",
 ## How many instances of civil war?
 # TODO
 
-# Evaluate possible forecast models
+# Cross-validate forecast models ------------------------------------------
+
+# Split into training and test
 train_obs <- wardat$year < 1990
 
 wardat_train <- wardat[train_obs,]
 wardat_test  <- wardat[-train_obs,]
 
-# Number of folds
+# Number of folds for cross-validation
 k <- 5
 
+# Some potential model specifications (Y~X)
 fearon_laitin_formula <- 
   civilwar ~ warhist + ln_gdpen + lpopns + lmtnest + ncontig + oil + nwstate + inst3 + pol4 + ef + relfrac
 
@@ -58,9 +65,6 @@ kitchen_sink_formula <-
   second + semipol3 + sip2 + sxpnew + sxpsq + tnatwar + trade + 
   warhist + xconst + drace + nmdgdp
 
-wardat_train <- wardat_train %>%
-  mutate(fold = sample(1:k, nrow(wardat_train), replace = TRUE))
-
 # 2. Create an empty results data frame to collect results
 cv_results <- tibble(Model = character(),
                      accuracy = double(),
@@ -72,10 +76,12 @@ cv_results <- tibble(Model = character(),
 # 3. Loop over each fold
 for (m in 1:k) {
   message("[ Fold ", m," / ",k," ]")
+  
+  # Pick train data for fold, validation data for fold
   train_fold <- wardat_train %>% filter(fold != m)
   valid_fold <- wardat_train %>% filter(fold == m)
   
-  # Fit models
+  # Fit models on train data, evaluate on validation data
   eval_fearon <- fit_and_eval_logit(
     train_fold, valid_fold, model_name = "Fearon Logit",
     formula = fearon_laitin_formula
@@ -115,12 +121,14 @@ for (m in 1:k) {
     bind_rows(eval_jungle)
 }
 
+# Summarise cross-validation results
 cv_summary <- cv_results %>%
   # group_by(TODO) %>%
   summarise(across(everything(), mean, na.rm = TRUE))
 print(cv_summary)
 
-# Evaluate the best model
+# Evaluate best model on test data ----------------------------------------
+
 # fit_and_eval_forest(TODO)
 
   
