@@ -9,12 +9,13 @@ library(tidyverse)
 download.file("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/data/wardat.rds",
               destfile = "data/wardat.rds")
 
-# Download helper script
-download.file("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/code/ml_funcs.R",
-              destfile = "code/ml_funcs.R")
+# Download helper script into a helpers folder
+if (!dir.exists("helpers")) dir.create("helpers")
+download.file("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/helpers/ml_funcs.R",
+              destfile = "helpers/ml_funcs.R")
 
 # Source helper functions
-source("code/ml_funcs.R")
+source("helpers/ml_funcs.R")
 
 # Read data
 wardat <- readRDS("data/wardat.rds")
