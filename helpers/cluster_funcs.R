@@ -1,6 +1,23 @@
 library(tidyverse)
 
-discover_principal_components <- function(data, vars, num_comps = 3, scale_vars = TRUE) {
+# This helper function runs PCA on selected variables and returns the original
+# dataset with new principal component scores (PC1, PC2, ...) added.
+#
+# Arguments:
+# - data: A data frame
+# - vars: Character vector of variable names to include in PCA
+# - num_comps: Number of components to keep (default = 3)
+# - scale_vars: Whether to standardize variables before PCA (default = TRUE)
+#
+# Output:
+# - Returns original data + PC columns
+# - Also attaches:
+#   - attr(out, "pca_var_expl") gives variance explained of each of the desired components
+#   - attr(out, "pca_model") gives the prcomp object
+discover_principal_components <- function(data, 
+                                          vars, 
+                                          num_comps = 3, 
+                                          scale_vars = TRUE) {
   # Add ID to join back later
   data <- data %>% mutate(.row_id = row_number())
   
@@ -33,6 +50,31 @@ discover_principal_components <- function(data, vars, num_comps = 3, scale_vars 
   return(out)
 }
 
+
+# This helper function runs **k-means clustering** on selected variables and
+# returns the original dataset with a new column, `cluster`, indicating each
+# observation's assigned cluster.
+#
+# Arguments:
+# - data: A data frame.
+# - vars: Character vector of variable names to use for clustering.
+# - k: Number of clusters to form (default = 3).
+# - seed: Random seed for reproducibility (default = 123).
+#
+# Output:
+# - Returns the original dataset with an additional column:
+#   - `cluster`: factor variable indicating cluster assignment.
+# - Also attaches:
+#   - `attr(out, "kmeans_model")`: the fitted k-means object.
+#   - `attr(out, "kmeans_vars")`: variables used in clustering.
+#   - `attr(out, "kmeans_tot_withinss")`: total within-cluster sum of squares.
+#   - `attr(out, "kmeans_betweenss")`: between-cluster sum of squares.
+#   - `attr(out, "kmeans_totss")`: total sum of squares.
+#
+# Notes:
+# - K-means is sensitive to scaling — this function standardizes variables automatically.
+# - Choosing `k` is part of the analytical judgment. Use tools like an elbow plot to guide your decision.
+# - Cluster labels are arbitrary (1, 2, 3, ...); interpret them based on patterns in the data.
 discover_kmeans_clusters <- function(data, vars, k = 3, seed = 123) {
   set.seed(seed)
   
@@ -72,7 +114,22 @@ discover_kmeans_clusters <- function(data, vars, k = 3, seed = 123) {
   return(out)
 }
 
-plot_pca_2d <- function(data, labels = NULL, with_clusters = FALSE, with_loadings = FALSE, top_n_loadings = 8) {
+
+# This helper function **visualizes the results of a PCA** in a 2D scatterplot
+# using the first two principal components (PC1 and PC2). It can also optionally
+# overlay cluster assignments and loading vectors for interpretation.
+#
+# Arguments:
+# - data: A data frame returned by `discover_principal_components()`.
+# - labels: (optional) Name of a column to use as text labels for points.
+# - with_clusters: If TRUE, colors points by cluster (requires a `cluster` column).
+# - with_loadings: If TRUE, adds top loading vectors as arrows and labels.
+# - top_n_loadings: Number of loading vectors to display (default = 8).
+plot_pca_2d <- function(data, 
+                        labels = NULL, 
+                        with_clusters = FALSE, 
+                        with_loadings = FALSE, 
+                        top_n_loadings = 8) {
   # --- Extract PCA info ---
   pca <- attr(data, "pca_model")
   vars <- attr(data, "pca_vars")
@@ -149,7 +206,19 @@ plot_pca_2d <- function(data, labels = NULL, with_clusters = FALSE, with_loading
   return(p)
 }
 
-plot_pca_loadings <- function(data, num_comps = 2, top_num_vars = 10, scale_vars = TRUE) {
+# This helper function visualizes the **top variable loadings** for each
+# principal component, showing which variables contribute most strongly to each
+# component and in which direction (positive or negative).
+#
+# Arguments:
+# - data: A data frame returned by `discover_principal_components()`.
+# - num_comps: Number of principal components to plot (default = 2).
+# - top_num_vars: Number of top variables (by absolute loading) to display per component (default = 10).
+# - scale_vars: Whether variables were scaled before PCA (kept for compatibility; not used directly in plotting).
+plot_pca_loadings <- function(data, 
+                              num_comps = 2, 
+                              top_num_vars = 10, 
+                              scale_vars = TRUE) {
   # --- Extract PCA info ---
   pca <- attr(data, "pca_model")
   vars <- attr(data, "pca_vars")
@@ -205,7 +274,28 @@ plot_pca_loadings <- function(data, num_comps = 2, top_num_vars = 10, scale_vars
     )
 }
 
-
+# This helper function creates an **elbow plot** to help decide on the appropriate
+# number of clusters (k) when using k-means. It shows how the total within-cluster
+# sum of squares (a measure of compactness) decreases as k increases.
+#
+# Arguments:
+# - data: A data frame (often with principal components).
+# - vars: Character vector of variable names to use for clustering (e.g., `c("PC1", "PC2")`).
+# - k_max: Maximum number of clusters to evaluate (default = 10).
+# - scale_vars: Whether to standardize variables before clustering (default = TRUE).
+# - seed: Random seed for reproducibility (default = 123).
+#
+# Output:
+# - A `ggplot` line plot with:
+#   - x-axis: number of clusters (k),
+#   - y-axis: total within-cluster sum of squares.
+# - The **“elbow”** is the point where the curve begins to flatten, suggesting a
+#   good candidate for k.
+#
+# Notes:
+# - K-means tends to show rapid improvement up to the “right” number of clusters,
+#   then flatten out — similar to diminishing returns.
+# - The elbow plot is a **heuristic**, not a strict rule — use it as a guide.
 plot_kmeans_elbow <- function(data, vars, k_max = 10, scale_vars = TRUE, seed = 123) {
   set.seed(seed)
   
