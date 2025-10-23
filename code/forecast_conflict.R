@@ -9,13 +9,18 @@ library(tidyverse)
 download.file("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/data/wardat.rds",
               destfile = "data/wardat.rds")
 
-# Download helper script into a helpers folder
+# Download helper scripts into a helpers folder
 if (!dir.exists("helpers")) dir.create("helpers")
 download.file("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/helpers/ml_funcs.R",
               destfile = "helpers/ml_funcs.R")
 
+if (!dir.exists("helpers")) dir.create("helpers")
+download.file("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/helpers/conflict_models.R",
+              destfile = "helpers/conflict_models.R")
+
 # Source helper functions
 source("helpers/ml_funcs.R")
+source("helpers/conflict_models.R")
 
 # Read data
 wardat <- readRDS("data/wardat.rds")
