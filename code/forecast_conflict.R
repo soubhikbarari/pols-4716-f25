@@ -75,6 +75,11 @@ cv_results <- tibble(Model = character(),
                      recall = double())
 
 # 3. Loop over each fold
+
+# Create folds
+wardat_train <- wardat_train %>%
+  mutate(fold = sample(rep(1:k, length.out = n())))
+
 for (m in 1:k) {
   message("[ Fold ", m," / ",k," ]")
   
