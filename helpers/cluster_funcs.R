@@ -122,11 +122,15 @@ discover_kmeans_clusters <- function(data, vars, k = 3, seed = 123) {
 # Arguments:
 # - data: A data frame returned by `discover_principal_components()`.
 # - labels: (optional) Name of a column to use as text labels for points.
+# - label_size: Size for labels in ggplot.
+# - point_size: Size for points in ggplot.
 # - with_clusters: If TRUE, colors points by cluster (requires a `cluster` column).
 # - with_loadings: If TRUE, adds top loading vectors as arrows and labels.
 # - top_n_loadings: Number of loading vectors to display (default = 8).
 plot_pca_2d <- function(data, 
                         labels = NULL, 
+                        label_size = 3,
+                        point_size = 5,
                         with_clusters = FALSE, 
                         with_loadings = FALSE, 
                         top_n_loadings = 8) {
@@ -150,18 +154,17 @@ plot_pca_2d <- function(data,
       y = paste0("PC2 (", var_expl[2], "%)")
     )
   
-  if (!is.null(labels) && labels %in% colnames(data)) {
-    p <- p + 
-      geom_text(aes(label = lab), size = 3, alpha = 0.8)
-  }
-  
   # --- Add clusters if requested ---
   if (with_clusters && "cluster" %in% colnames(data)) {
-    p <- p + geom_point(aes(color = cluster), alpha = 0.7) +
-      scale_color_brewer(palette = "Set2") +
-      labs(color = "Cluster")
+    p <- p + geom_point(aes(color = cluster, shape = cluster), size = point_size, alpha = 0.7) +
+      labs(color = "Cluster", shape = "Cluster")
   } else {
     p <- p + geom_point(color = "grey", shape = 21)
+  }
+  
+  if (!is.null(labels) && labels %in% colnames(data)) {
+    p <- p + 
+      geom_text_repel(aes(label = lab), size = label_size, alpha = 0.8)
   }
   
   # --- Add loadings if requested ---
@@ -171,21 +174,12 @@ plot_pca_2d <- function(data,
       mutate(Length = sqrt(PC1^2 + PC2^2)) %>%
       slice_max(order_by = Length, n = top_n_loadings)
     
-    # Get labels from attr()
-    label_map <- map_chr(loadings$Variable, function(v) {
-      lbl <- attr(data[[v]], "label")
-      if (is.null(lbl) || lbl == "") v else lbl
-    })
-    loadings$Label <- label_map
-    
     # Scale arrows to match data spread
     max_score <- max(abs(c(data$PC1, data$PC2)), na.rm = TRUE)
     loadings <- loadings %>%
       mutate(
         PC1_scaled = PC1 * max_score,
-        PC2_scaled = PC2 * max_score#,
-        # angle = atan2(PC2_scaled, PC1_scaled) * 180 / pi,
-        # angle = ifelse(angle > 90 | angle < -90, angle + 180, angle)
+        PC2_scaled = PC2 * max_score
       )
     
     p <- p +
@@ -197,8 +191,7 @@ plot_pca_2d <- function(data,
       ) +
       geom_label(
         data = loadings,
-        # aes(x = PC1_scaled, y = PC2_scaled, label = Label, angle = angle),
-        aes(x = PC1_scaled, y = PC2_scaled, label = Label),
+        aes(x = PC1_scaled, y = PC2_scaled, label = Variable),
         hjust = 0.5, vjust = -0.5, size = 3
       )
   }
@@ -240,9 +233,10 @@ plot_pca_loadings <- function(data,
     ) %>%
     mutate(
       abs_loading = abs(Loading),
-      Label = ifelse(Variable %in% names(label_map),
-                     label_map[Variable],
-                     Variable)
+      Label = Variable,
+      # Label = ifelse(Variable %in% names(label_map),
+      #                label_map[Variable],
+      #                Variable)
     ) %>%
     filter(PC %in% paste0("PC", 1:num_comps)) %>%
     group_by(PC) %>%
@@ -274,9 +268,9 @@ plot_pca_loadings <- function(data,
     )
 }
 
-# This helper function creates an **elbow plot** to help decide on the appropriate
-# number of clusters (k) when using k-means. It shows how the total within-cluster
-# sum of squares (a measure of compactness) decreases as k increases.
+# This helper function plots how the k-means loss (the total within-cluster
+# sum of squares) changes as k increases. It creates an **elbow plot** which can 
+# help decide on the appropriate number of clusters (k) when using k-means.
 #
 # Arguments:
 # - data: A data frame (often with principal components).
@@ -327,3 +321,61 @@ plot_kmeans_elbow <- function(data, vars, k_max = 10, scale_vars = TRUE, seed = 
       y = "Total within-cluster sum of squares"
     )
 }
+
+
+get_labels_in_data <- function(data) {
+  purrr::map_dfr(colnames(data), function(.x) {
+    if (is.null(attr(data[[.x]], "label"))) {
+      lab <- "No label"
+    } else {
+      lab <- attr(data[[.x]], "label")
+    }
+    data.frame(var=.x, lab=lab)
+  })
+}
+
+
+
+# This function fits a logistic regression model predicting whether an 
+# observation belongs to a given cluster and then plots the significant 
+# predictors (odds ratios with confidence intervals).
+#
+# Arguments:
+# - clus: Numeric cluster ID to model (e.g., 1, 2, 3).
+# - predictors: Character vector of predictor variables (default = cluster_vars).
+# - data: dataframe (must have cluster variable and the predictor variables)
+# - conf_level: Confidence level for intervals (default = 0.95).
+#
+what_predicts_membership_in_cluster <- function(clus,
+                                                predictors, 
+                                                data,
+                                                conf_level = 0.95) {
+  f <- as.formula(
+    paste0("I(cluster == ", clus, ") ~ ", paste(predictors, collapse = " + "))
+  )
+  mdl <- glm(f, data = data, family = binomial)
+
+  z <- qnorm((1-conf_level)/2, lower.tail=F)
+  
+  ests <- broom::tidy(mdl) %>%
+    mutate(sig = p.value < (1-conf_level))
+  
+  plot <- ests %>%
+    filter(term != "(Intercept)") %>%
+    ggplot(aes(y=term, 
+               x=estimate, 
+               color=sig,
+               xmin=estimate-z*std.error, 
+               xmax=estimate+z*std.error)) +
+    geom_vline(xintercept=1, lty=2) +
+    geom_pointrange() +
+    scale_color_manual(values = c("grey", "black")) +
+    labs(title = paste("Predictors of Membership in Cluster", clus),
+         x = paste0("Log Odds Estimate (",conf_level*100,"% CI)"), y = "Predictors") +
+    theme(legend.position = "top")
+  
+  return(plot)
+}
+
+
+
