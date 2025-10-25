@@ -316,3 +316,59 @@ plot_kmeans_elbow <- function(data, vars, k_max = 10, scale_vars = TRUE, seed = 
       y = "Total within-cluster sum of squares"
     )
 }
+
+# This function searches for labels in your data columns and 
+# returns it as a dataframe
+get_labels_in_data <- function(data) {
+  purrr::map_dfr(colnames(data), function(.x) {
+    if (is.null(attr(data[[.x]], "label"))) {
+      lab <- "No label"
+    } else {
+      lab <- attr(data[[.x]], "label")
+    }
+    data.frame(var=.x, lab=lab)
+  })
+}
+
+
+
+# This function fits a logistic regression model predicting whether an 
+# observation belongs to a given cluster and then plots the significant 
+# predictors (odds ratios with confidence intervals).
+#
+# Arguments:
+# - clus: Numeric cluster ID to model (e.g., 1, 2, 3).
+# - predictors: Character vector of predictor variables (default = cluster_vars).
+# - data: dataframe (must have cluster variable and the predictor variables)
+# - conf_level: Confidence level for intervals (default = 0.95).
+#
+what_predicts_membership_in_cluster <- function(clus,
+                                                predictors, 
+                                                data,
+                                                conf_level = 0.95) {
+  f <- as.formula(
+    paste0("I(cluster == ", clus, ") ~ ", paste(predictors, collapse = " + "))
+  )
+  mdl <- glm(f, data = data, family = binomial)
+  
+  z <- qnorm((1-conf_level)/2, lower.tail=F)
+  
+  ests <- broom::tidy(mdl) %>%
+    mutate(sig = p.value < (1-conf_level))
+  
+  plot <- ests %>%
+    filter(term != "(Intercept)") %>%
+    ggplot(aes(y=term, 
+               x=estimate, 
+               color=sig,
+               xmin=conf.low, 
+               xmax=conf.high)) +
+    geom_vline(xintercept=1, lty=2) +
+    geom_pointrange() +
+    scale_color_manual(values = c("grey", "black")) +
+    labs(title = paste("Predictors of Membership in Cluster", clus),
+         x = paste0("Log Odds Estimate (",conf_level*100,"% CI)"), y = "Predictors") +
+    theme(legend.position = "top")
+  
+  return(plot)
+}
