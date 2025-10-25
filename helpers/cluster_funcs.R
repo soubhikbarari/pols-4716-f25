@@ -174,7 +174,7 @@ plot_pca_2d <- function(data,
       rownames_to_column("Variable") %>%
       mutate(Length = sqrt(PC1^2 + PC2^2)) %>%
       slice_max(order_by = Length, n = top_n_loadings)
-  
+    
     loadings$Label <- loadings$Variable
     
     # Scale arrows to match data spread
@@ -354,15 +354,15 @@ what_predicts_membership_in_cluster <- function(clus,
   z <- qnorm((1-conf_level)/2, lower.tail=F)
   
   ests <- broom::tidy(mdl) %>%
-    mutate(sig = p.value < (1-conf_level))
+    mutate(sig = TRUE) # TODO
   
   plot <- ests %>%
     filter(term != "(Intercept)") %>%
-    ggplot(aes(y=term, 
-               x=estimate, 
+    ggplot(aes(y=term,
+               x=estimate,
                color=sig,
-               xmin=conf.low, 
-               xmax=conf.high)) +
+               xmin=estimate-z*std.error,
+               xmax=estimate+z*std.error)) +
     geom_vline(xintercept=1, lty=2) +
     geom_pointrange() +
     scale_color_manual(values = c("grey", "black")) +
