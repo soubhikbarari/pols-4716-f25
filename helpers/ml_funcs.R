@@ -55,8 +55,7 @@ compute_roc_auc <- function(y_true, y_prob, plot = TRUE) {
       labs(
         x = "False Positive Rate",
         y = "True Positive Rate",
-        title = paste0("ROC Curve (AUC = ", round(auc, 3), ")"),
-        subtitle ="Cooperative Election Study | Logistic Model"
+        title = paste0("ROC Curve (AUC = ", round(auc, 3), ")")
       ) +
       theme_minimal(base_size = 13)
     print(gg)
