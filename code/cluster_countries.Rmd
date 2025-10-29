@@ -174,8 +174,6 @@ cluster_vars <- c()
 -->
 
 ```{r transform-vars, eval=exists('cluster_vars')}
-# This standardizes all of our variables into Z-scores so that they are 
-# more easily comparable when we visualize or analyze them later 
 wdi_std <- wdi %>%
   mutate(across(
     all_of(cluster_vars),
