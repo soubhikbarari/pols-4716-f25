@@ -85,14 +85,17 @@ cat("</details>")
 <!--
 TASK 1
 ======
-Before diving into PCA or clustering, take a few minutes to *look at the data and think conceptually*.
+Before diving into PCA or clustering, take a few minutes to *look at the data 
+and think conceptually*.
 
 Review the variables above (you can just run the `all-vars` chunk above).
 
-With your discussion partner, and after reviewing the variables above, brainstorm what a *policy-relevant typology of countries* might look like:
+After reviewing the variables above, brainstorm what a *policy-relevant 
+typology of countries* might look like:
 
 - Consider political, economic, and social dimensions.  
-- You may want to recall some of the models and discussions from the conflict forecasting week.
+- You may want to recall some of the models and discussions from the conflict 
+  forecasting week.
 
 Some additional questions to discuss:
 - What kind of *descriptive typology* might help summarize this data?
@@ -122,7 +125,8 @@ The goal is to turn many (potentially correlated) variables into a smaller numbe
 
 Instead of working with $x_1,...,x_p$ (possibly in the hundreds) we can simply analyze and visualize $\text{PC}_1$ and $\text{PC}_2$, the first two principal components.
 
-Examples: 
+Examples:
+
 - Reducing political attitudes to a few underlying dimensions.
 - Summarising the roll-coll votes of Members of Congress.
 
@@ -133,6 +137,7 @@ Each principal component (PC1, PC2,...) is a weighted combination of all the ori
 The weights are called **loadings**.
 
 <!-- If this doesn't render in R Studio (a) knit this or (b) click the gear button and generate a Preview -->
+
 $$
 \text{PC}_1 = w_{11} x_1 + w_{12} x_2 + \dots + w_{1p} x_p \\
 \text{PC}_2 = w_{21} x_1 + w_{22} x_2 + \dots + w_{2p} x_p
@@ -144,6 +149,7 @@ The first component (PC1) captures the *largest share of variance* in the data (
 Additional components capture the *remaining variance*.
 
 Loadings for each component are estimated via a **loss function** that tries to ensure that:
+
 - the variance of each principal component is maximized
 - loadings for each component
 - later components are orthogonal (independent) of earlier ones
@@ -201,7 +207,8 @@ wdi_reduced %>%
 <!--
 TASK 2b
 =======
-Now take a closer look at the loadings to interpret what the components represent. Run the following two plots.
+Now take a closer look at the loadings to interpret what the components represent. 
+Run the following two plots.
 
 - Which variables have the largest loadings on PC1 and PC2? (either positive or negative)
 - Do these patterns align with your earlier typology brainstorm?
@@ -219,7 +226,10 @@ wdi_reduced %>%
 wdi_reduced %>%
   plot_pca_2d(with_loadings = TRUE)
 ```
-<!-- Note: for an even better visualization, refer to the `labels` argument (check the function definition in `cluster_func.R`)
+
+<!-- 
+Note: for an even better visualization, refer to the `labels` argument 
+(check the function definition in `cluster_func.R`)
 -->
 
 # Clustering
@@ -229,10 +239,12 @@ wdi_reduced %>%
 K-means is an method used to *group observations into k clusters* based on similarity.
 
 The goal is to assign each observation to 1 of $K$ clusters where:
+
 - Observations within the same cluster have *similar* values of $X_1,X_2,...$ to each other.
 - Observations in different clusters have *different* values of $X_1,X_2,...$ from each other.
 
 Examples:
+
 - Segmenting survey respondents by attitudes or behaviors
 - Identifying signals (e.g. signs of manipulation) in image data
 
@@ -243,7 +255,8 @@ For this reason it's also called the *within-cluster sum of squares* (sound fami
 
 K-means tries to *minimize this loss*, making clusters as compact as possible:
 
-The algorithm performs the following steps: 
+The algorithm performs the following steps:
+
 - Randomly picks $k$ **centroids** (starting points).
 - Assigns each observation to the nearest centroid.
 - Updates the centroids based on the mean of assigned points.
@@ -259,7 +272,7 @@ Now we'll be choosing a value for K (the number of clusters).
 In particular, we're going to evaluate what the k-means loss function looks
 like for different values of K. 
 
-Before doing this, discuss wtih your partner: what might the loss (y axis)
+Before doing this, make a prediction: what might the loss (y axis)
 look like (e.g. its shape) for increasing values of K (x axis)? Why?
 
 Now:
@@ -312,7 +325,8 @@ wdi_clustered %>%
 <!--
 TASK 5a
 =======
-Now we want to interpret our cluster outputs by looking at how key variables are distributed across clusters.
+Now we want to interpret our cluster outputs by looking at how key variables are 
+distributed across clusters.
 
 Let’s begin with a few cross-tabulations:
 - Which clusters tend to have countries with higher-than-average GDP?
@@ -335,17 +349,19 @@ TASK 5b
 =======
 Next, we'll dig deeper into the predictors of cluster membership.
 
-The goal in this step is to identify **significant (in both the statistical and scientific sense)** predictors for each cluster.
+The goal in this step is to identify **significant (in both the statistical and 
+scientific sense)** predictors for each cluster.
 
 i) First, in `cluster_funcs.R` modify the function `what_predicts_membership_in_cluster()`:
   - Note the variable `ests` where the regression parameter estimates are extracted (into `ests`) 
   - Create a new variable `sig` in `ests` that indicates whether each coefficient is statistically significant
     - Hint: if the confidence level (`conf_level`) is 0.95, what is the threshold (alpha) for statistical significance?
 
-ii) Based on everything you've done so far, select a handful of variables that might be related to membership in each cluster. Run `what_predicts_membership_in_cluster()` for different clusters with those variables as predictors.
+ii) Based on everything you've done so far, select a handful of variables that 
+    might be related to membership in each cluster. Run `what_predicts_membership_in_cluster()` 
+    for different clusters with those variables as predictors.
   - What does this tell us about the meaning of each cluster?
   - Are there any clusters with NO significant predictors? What does that tell you?
-   
 -->
 
 ```{r regression-clus}
@@ -359,9 +375,12 @@ TASK 6
 ======
 - What are some limitations of the clustering approach you used?
 
-- Revisit the goals you outlined at the beginning. How might you refine your approach to move closer to those goals? Consider these in your discussion and notes: 
+- Revisit the goals you outlined at the beginning. 
+  How might you refine your approach to move closer to those goals? 
+  Consider these in your discussion and notes:
   - Different variables or data sources
   - A clustering method with a different kind of loss function
   - Focusing on just PCA or just clustering
   - Integrating human judgment into the process
+  - Considering uncertainty
 -->
