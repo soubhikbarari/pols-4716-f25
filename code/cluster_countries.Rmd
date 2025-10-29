@@ -275,7 +275,7 @@ look like (e.g. its shape) for increasing values of K (x axis)? Why?
 
 Now:
 - Run the appropriate function to plot the k-means loss function
-- Where does the 'elbow' in the said elbow plot appear? What does this rerpesent?
+- Where does the 'elbow' in the said elbow plot appear? What does this represent?
 - What K does it suggest you should use? Are there reasons to prefer a different K?
 -->
 
