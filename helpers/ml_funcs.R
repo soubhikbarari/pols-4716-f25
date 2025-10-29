@@ -49,21 +49,19 @@ compute_roc_auc <- function(y_true, y_prob, plot = TRUE) {
   roc_df <- data.frame(threshold = thresholds, fpr = fpr, tpr = tpr)
   
   if (plot) {
-    gg <- ggplot(roc_df, aes(x = fpr, y = tpr)) +
+    ggplot(roc_df, aes(x = fpr, y = tpr)) +
       geom_line(color = "#2E86C1", size = 1.2) +
       geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
       labs(
         x = "False Positive Rate",
         y = "True Positive Rate",
-        title = paste0("ROC Curve (AUC = ", round(auc, 3), ")"),
-        subtitle ="Cooperative Election Study | Logistic Model"
+        title = paste0("ROC Curve (AUC = ", round(auc, 3), ")")
       ) +
       theme_minimal(base_size = 13)
-    print(gg)
+  } else {
+    return(list(
+      auc = auc,
+      roc = data.frame(threshold = thresholds, fpr = fpr, tpr = tpr)
+    ))
   }
-  
-  return(list(
-    auc = auc,
-    roc = data.frame(threshold = thresholds, fpr = fpr, tpr = tpr)
-  ))
 }
