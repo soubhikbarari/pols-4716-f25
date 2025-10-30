@@ -163,7 +163,36 @@ TASK 2a
 -->
 
 ```{r pick-vars}
-cluster_vars <- c()
+cluster_vars <- c(
+  ## Economic development
+  'gdp_per_capita', 'gdp_growth', 
+  'exports_gdp_pct', 'imports_gdp_pct', 
+  'agriculture_land_pct', 'unemployment_rate', 
+  'industry_value_added_pct', 'household_consumption_pct', 
+  
+  ## Demographics
+  'population_total', 'urban_population_pct', 
+  'life_expectancy', 'infant_mortality', 
+  'population_65plus_pct', 
+  
+  ## Health & social
+  'health_expenditure_pc', 'health_expenditure_gdp', 
+  'hospital_beds_per_1k', 'maternal_mortality', 
+  'access_to_safe_water',
+  
+  ## Education
+  'primary_enrollment', 'secondary_enrollment', 
+  'tertiary_enrollment', 'adult_literacy_rate', 
+  
+  ## Politics & governance
+  'control_of_corruption', 'government_effectiveness', 
+  'political_stability', 'regulatory_quality', 
+  'rule_of_law', 'voice_and_accountability',
+  
+  ## Infrastructure and energy
+  'electricity_access_pct', 'internet_users_pct', 
+  'air_passengers', 'co2_emissions_pc'
+)
 ```
 
 <!--
