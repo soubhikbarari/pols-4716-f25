@@ -53,7 +53,8 @@ View(house_twitter20)
 ##
 ## Hint: if you're stuck run `help(str_detect)` and refer to its documentation
 ##
-house_twitter20$campaign <- str_detect(house_twitter20$source, "Campaign")
+
+# TODO
 
 ## TASK 1b. Identify Party and State ====
 ##
