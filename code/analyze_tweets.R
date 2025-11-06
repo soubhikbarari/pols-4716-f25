@@ -183,7 +183,9 @@ house_twitter20 <- house_twitter20 %>%
 ## - Based on this, what does the model below do? 
 ##  - What problem is it solving with the linear regression model?
 
-# TODO
+mdl <- glm(retweets ~ trump + economy + police + climate + vaccines + covid + healthcare + party + followers,
+           family = poisson, data = house_twitter20)
+plot_reg_ests(mdl)
 
 # Document-Feature Matrix (DFM) Analysis -----------------------------------
 # So far, we've been picking and testing specific keywords by hand. 
