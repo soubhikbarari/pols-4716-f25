@@ -1,0 +1,417 @@
+---
+title: "Clustering Countries"
+subtitle: "POLS 4716"
+date: "October 28, 2025"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+editor_options: 
+  chunk_output_type: console
+params:
+  print_codebook: TRUE
+---
+
+<!--
+When you are ready, click on Knit button in R Studio to produce 
+an HTML document of your results.
+-->
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(broom)
+library(ggrepel) # to install: install.packages("ggrepel")
+```
+
+**Analysts at many international organizations — such as the World Bank and OECD — are often tasked with developing typologies of countries.**
+
+**The goal is not to draw sharp or fixed boundaries but to reveal structure in messy, high-dimensional data and help policymakers, researchers, and the public understand countries in a comparative context.**
+
+This exercise gives you hands-on experience with one way to do this using unsupervised learning. 
+
+- We will use the **World Development Indicators (WDI)** developed by the World Bank for a subset of countries (`wdi.rds`).
+  - Original source [here](https://datatopics.worldbank.org/world-development-indicators/).
+  - The timespan is 2014 - 2024 and indicators are averaged over this period
+
+- We'll first use **principal components analysis (PCA)** to reduce a large number of variables into a few key dimensions.
+
+- Then we'll use **k-means clustering** to discover the latent clusters in those reduced dimensions.
+
+Along the way, we will want to think critically about what these clusters mean (and don't mean).
+
+```{r preamble, include=FALSE}
+library(tidyverse)
+
+wdi <- readRDS(file = "../data/wdi.rds")
+
+# Source helper functions
+source("../helpers/cluster_funcs.R")
+```
+
+# Quick Facts
+
+<!-- These will 'fill in' once you compile your Rmarkdown report! -->
+
+There are `r formatC(length(unique(wdi$country)),big.mark=",")` countries across `r ncol(wdi)` variables.
+
+# Codebook
+
+`r if (!params$print_codebook) "(To include this in the report, set the <code>print_codebook</code> in the Rmarkdown header to true)"`
+`r if (params$print_codebook) "(To exclude this from the report, set the <code>print_codebook</code> in the Rmarkdown header to false)"`
+
+```{r all-vars, echo=FALSE, results='asis', eval=params$print_codebook}
+cat("<details><summary><b>All Variables</b></summary>\n")
+for (col in colnames(wdi)) {
+  lab <- attr(wdi[[col]], "label")
+  lab <- if (is.null(lab)) "No label" else lab
+  cat(paste0("\n* **",col,"**: *",lab,"*"))
+}
+cat("</details>")
+```
+
+# Pre-Analysis
+
+<!--
+TASK 1
+======
+Before diving into PCA or clustering, take a few minutes to *look at the data and think conceptually*.
+
+Review the variables above (you can just run the `all-vars` chunk above).
+
+Brainstorm what a *policy-relevant typology of countries* might look like:
+
+- Consider political, economic, and social dimensions.  
+- You may want to recall some of the models and discussions from the conflict forecasting week.
+
+Some additional questions to discuss:
+- What kind of *descriptive typology* might help summarize this data?
+- What policy or analytical *goal* would this typology serve? Who would be the audience?
+- Which *variables* seem most relevant for grouping countries?
+  - It may be helpful to google unfamiliar acronyms (WDI) or proper nouns (Ethnologue)
+- How many *clusters or groups* of countries would you expect to see?
+
+Jot down some notes from your discussion (bullet points are fine).
+Feel free to write and run any relevant code in the chunk below.
+-->
+
+```{r peek}
+
+```
+
+# Dimensionality Reduction
+
+### What is PCA?
+
+<!-- If this doesn't render an image in R Studio, go to this link in your browser -->
+![PCA Visualized](https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/helpers/pca-dimredux.png)
+
+Principal components analysis (PCA) is a method for **reducing the dimensionality** of data. As the visual above shows, it can be described as 'finding the most informative x-axis and y-axis' (and potentially z-axis if you want to get wild) for your data. 
+
+The goal is to turn many (potentially correlated) variables into a smaller number of independent "principal components (PCs)".
+
+Instead of working with $x_1,...,x_p$ (possibly in the hundreds) we can simply analyze and visualize $\text{PC}_1$ and $\text{PC}_2$, the first two principal components.
+
+Examples:
+
+- Reducing political attitudes to a few underlying dimensions.
+- Summarising the roll-coll votes of Members of Congress.
+
+### How it works
+
+Each principal component (PC1, PC2,...) is a weighted combination of all the original variables.  
+
+The weights are called **loadings**.
+
+<!-- If this doesn't render in R Studio (a) knit this or (b) click the gear button and generate a Preview -->
+$$
+\text{PC}_1 = w_{11} x_1 + w_{12} x_2 + \dots + w_{1p} x_p \\
+\text{PC}_2 = w_{21} x_1 + w_{22} x_2 + \dots + w_{2p} x_p
+$$
+
+Variables with larger positive or negative loadings are *most influential* for that component.
+
+The first component (PC1) captures the *largest share of variance* in the data (a bit like $R^2$).  
+Additional components capture the *remaining variance*.
+
+Loadings for each component are estimated via a **loss function** that tries to ensure that:
+
+- the variance of each principal component is maximized
+- loadings for each component
+- later components are orthogonal (independent) of earlier ones
+
+### PCA results
+
+<!--
+TASK 2a
+=======
+- Select the variables (at least 2) you want to include in your clustering analysis.
+- Run the next block (transform-vars). 
+  - What is that doing?
+  - What is the purpose of this transformation?
+- Run `discover_principal_components()` to reduce the dimensionality of the data.
+  - Refer to `cluster_funcs.R` to check documentation if needed.
+- Visualize the results using `plot_pca_2d()`.
+-->
+
+```{r pick-vars}
+cluster_vars <- c(
+  ## Economic development
+  'gdp_per_capita', 'gdp_growth', 
+  'exports_gdp_pct', 'imports_gdp_pct', 
+  'agriculture_land_pct', 'unemployment_rate', 
+  'industry_value_added_pct', 'household_consumption_pct', 
+  
+  ## Demographics
+  'population_total', 'urban_population_pct', 
+  'life_expectancy', 'infant_mortality', 
+  'population_65plus_pct', 
+  
+  ## Health & social
+  'health_expenditure_pc', 'health_expenditure_gdp', 
+  'hospital_beds_per_1k', 'maternal_mortality', 
+  'access_to_safe_water',
+  
+  ## Education
+  'primary_enrollment', 'secondary_enrollment', 
+  'tertiary_enrollment', 'adult_literacy_rate', 
+  
+  ## Politics & governance
+  'control_of_corruption', 'government_effectiveness', 
+  'political_stability', 'regulatory_quality', 
+  'rule_of_law', 'voice_and_accountability',
+  
+  ## Infrastructure and energy
+  'electricity_access_pct', 'internet_users_pct', 
+  'air_passengers', 'co2_emissions_pc'
+)
+```
+
+```{r transform-vars}
+# This standardizes all of our variables into Z-scores so that they 
+# are more easily comparable when we visualize or analyze them later
+wdi_std <- wdi %>%
+  mutate(across(
+    all_of(cluster_vars),
+    ~ (.x - mean(.x, na.rm = TRUE)) / sd(.x, na.rm = TRUE)
+  ))
+```
+
+```{r run-pca, eval=length(cluster_vars) > 2}
+wdi_reduced <- wdi_std %>%
+  discover_principal_components(vars = cluster_vars, num_comps = 2)
+```
+
+```{r pca-plot, eval=exists('wdi_reduced')}
+wdi_reduced %>%
+  plot_pca_2d(labels = "country")
+```
+
+<!--
+TASK 2b
+=======
+Now take a closer look at the loadings to interpret what the components represent. 
+Run the following two plots.
+
+- Which variables have the largest loadings on PC1 and PC2? (either positive or negative)
+- Do these patterns align with your earlier typology brainstorm?
+- How might you interpret the substantive meaning of PC1 and PC2 based on these variables?
+
+Write some notes below the plots.
+-->
+
+```{r pca-loadings, eval=exists('wdi_reduced')}
+wdi_reduced %>%
+  plot_pca_loadings(num_comps = 2)
+```
+
+```{r pca-plot-with-loadings, eval=exists('wdi_reduced')}
+wdi_reduced %>%
+  plot_pca_2d(labels = "country", with_loadings = TRUE)
+```
+
+# Clustering
+
+### What is k-means clustering?
+
+K-means is an method used to *group observations into k clusters* based on similarity.
+
+The goal is to assign each observation to 1 of $K$ clusters where:
+
+- Observations within the same cluster have *similar* values of $X_1,X_2,...$ to each other.
+- Observations in different clusters have *different* values of $X_1,X_2,...$ from each other.
+
+Examples:
+
+- Segmenting survey respondents by attitudes or behaviors
+- Identifying signals (e.g. signs of manipulation) in image data
+
+### How it works
+
+The **loss function** is how far each observation is from its cluster’s centroid.
+For this reason it's also called the *within-cluster sum of squares* (sound familiar?).
+
+K-means tries to *minimize this loss*, making clusters as compact as possible:
+
+The algorithm performs the following steps:
+
+- Randomly picks $k$ **centroids** (starting points).
+- Assigns each observation to the nearest centroid.
+- Updates the centroids based on the mean of assigned points.
+- Repeats until assignments stabilize.
+
+### Choosing K
+
+<!--
+TASK 3
+======
+Now we'll be choosing a value for K (the number of clusters). 
+
+In particular, we're going to evaluate what the k-means loss function looks
+like for different values of K. 
+
+Before doing this, make a prediction: what might the loss (y axis)
+look like (e.g. its shape) for increasing values of K (x axis)? Why?
+
+Now:
+- Run the appropriate function to plot the k-means loss function
+- Where does the 'elbow' in the said elbow plot appear? What does this rerpesent?
+- What K does it suggest you should use? Are there reasons to prefer a different K?
+-->
+
+```{r elbow, eval=exists('wdi_reduced')}
+wdi_reduced %>%
+  plot_kmeans_elbow(vars = c("PC1", "PC2"), k_max = 15)
+```
+
+```{r pick-k}
+K <- 4
+```
+
+### Results
+
+<!--
+TASK 4a
+=======
+Run and visualize the k-means clusters on the reduced space below.
+
+Which countries or regions are represented in each of these clusters?
+
+Hint: consider using the table() function.
+-->
+
+```{r run-kmeans, eval=exists('K') & exists('wdi_reduced')}
+wdi_clustered <- wdi_reduced %>%
+  discover_kmeans_clusters(vars = c("PC1", "PC2"), k = K)
+```
+
+<!--
+Consider tweaking the function arguments here for a better display.
+-->
+```{r kmeans-plot, eval=exists('wdi_clustered')}
+wdi_clustered %>%
+  plot_pca_2d(labels = "country", 
+              with_clusters = TRUE, with_loadings = TRUE)
+```
+
+Unique countries in cluster:
+
+```{r look-at-countries-in-each-cluster-v1, echo=TRUE}
+unique(wdi_clustered$country[wdi_clustered$cluster == 1])
+
+unique(wdi_clustered$country[wdi_clustered$cluster == 2])
+
+unique(wdi_clustered$country[wdi_clustered$cluster == 3])
+
+unique(wdi_clustered$country[wdi_clustered$cluster == 4])
+```
+
+Dataframe of countries in each cluster:
+
+```{r look-at-countries-in-each-cluster-v2, echo=TRUE}
+wdi_clustered %>%
+  group_by(cluster) %>%
+  summarise(countries = paste(unique(country), collapse = ", ")) %>%
+  arrange(cluster)
+```
+
+Table of regions represented in each cluster:
+
+```{r look-at-regions-in-each-cluster-v3, echo=TRUE}
+table(wdi_clustered$region, wdi_clustered$cluster)
+```
+
+# Interpretation
+
+<!--
+TASK 5a
+=======
+Now we want to interpret our cluster outputs by looking at how key variables are
+distributed across clusters.
+
+Let’s begin with a few cross-tabulations:
+- Which clusters tend to have countries with higher-than-average GDP?
+- Which clusters tend to have countries with higher-than-average infant mortality?
+- Which clusters tend to have countries with higher-than-average CO2 emissions?
+
+Hint: Remember that our variables are scaled into z-scores (what does a value of 0 mean?)
+
+Use the table() function to output these cross-tabulations.
+
+These quick cross-tabulations can help us form hypotheses about what each cluster 
+represents *before* diving into any modelling.
+-->
+
+```{r country-tables}
+table(wdi_clustered$cluster, wdi_clustered$gdp_per_capita > 0)
+table(wdi_clustered$cluster, wdi_clustered$exports_gdp_pct > 0)
+table(wdi_clustered$cluster, wdi_clustered$infant_mortality > 0)
+table(wdi_clustered$cluster, wdi_clustered$unemployment_rate > 0)
+table(wdi_clustered$cluster, wdi_clustered$co2_emissions_pc > 0)
+```
+
+<!--
+TASK 5b
+=======
+Next, we'll dig deeper into the predictors of cluster membership.
+
+The goal in this step is to identify **significant (in both the statistical and 
+scientific sense)** predictors for each cluster.
+
+i) First, in `cluster_funcs.R` modify the function `what_predicts_membership_in_cluster()`:
+  - Note the variable `ests` where the regression parameter estimates are extracted (into `ests`) 
+  - Create a new variable `sig` in `ests` that indicates whether each coefficient is statistically significant
+    - Hint: if the confidence level (`conf_level`) is 0.95, what is the threshold (alpha) for statistical significance?
+
+ii) Based on everything you've done so far, select a handful of variables that might be related to membership in each cluster. Run `what_predicts_membership_in_cluster()` for different clusters with those variables as predictors.
+  - What does this tell us about the meaning of each cluster?
+  - Are there any clusters with NO significant predictors? What does that tell you?
+-->
+
+```{r regression-clus}
+# predictors <- c() # TODO
+what_predicts_membership_in_cluster(clus = 1,
+                                    predictors = predictors, 
+                                    data = wdi_clustered)
+what_predicts_membership_in_cluster(clus = 2,
+                                    predictors = predictors, 
+                                    data = wdi_clustered)
+what_predicts_membership_in_cluster(clus = 3,
+                                    predictors = predictors, 
+                                    data = wdi_clustered)
+```
+
+<!--
+TASK 6
+======
+- What are some limitations of the clustering approach you used?
+
+- Revisit the goals you outlined at the beginning. How might you refine your 
+approach to move closer to those goals? Consider these in your discussion and notes: 
+  - Different variables or data sources
+  - A clustering method with a different kind of loss function
+  - Focusing on just PCA or just clustering
+  - Integrating human judgment into the process
+  - Considering uncertainty
+-->
