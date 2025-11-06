@@ -176,11 +176,6 @@ house_twitter20 <- house_twitter20 %>%
 
 # TODO
 
-## Why linear models might be problematic here:
-## - They assume a continuously distributed outcome.
-## - They may predict negative values (which make no sense for counts).
-## - They don't model the non-linear relationship between predictors and counts.
-
 ## A Poisson random variable represents the number of events (e.g., retweets) 
 ## that occur within a fixed window. It assumes counts are non-negative and typically 
 ## right-skewed.
