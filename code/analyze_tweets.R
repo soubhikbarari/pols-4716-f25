@@ -96,7 +96,7 @@ str_extract_all(matches, pattern = "([A-Z]{3})") ## What does `str_extract_all()
 house_twitter20 <- house_twitter20 %>%
   mutate(
     party = str_extract(source, "TODO", 1),
-    state = str_extract(house_twitter20$source, "TODO", 1)
+    state = str_extract(source, "TODO", 1)
   )
 
 ## Check the result. Are there any instances where you failed to retrieve
