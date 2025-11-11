@@ -30,6 +30,8 @@ plot_reg_ests <- function(fitted.model, conf.level = 0.99) {
 
 # Load data
 house_twitter20 <- readRDS(url("https://tinyurl.com/house-twitter-20"))
+# ...if that URL uncomment and try this:
+# house_twitter20 <- readRDS(url("https://github.com/soubhikbarari/pols-4716-f25/raw/refs/heads/main/data/house_twitter20.rds"))
 
 # Check data
 nrow(house_twitter20)
